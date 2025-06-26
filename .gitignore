@@ -1,0 +1,16 @@
+cali_dec/
+cali_hex/
+cali_tot/
+main_data_dec/
+main_data_hex/
+.vscode/
+
+*.pdf
+
+convertHex2Dec
+
+re-adjust.cpp
+re-adjust
+
+test.cpp
+test
