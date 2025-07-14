@@ -14,7 +14,7 @@
 
 void Lab2hist2(int filepath_option = 0, int do_debug = false) {
 
-  // (only in debug mode) decides the number of  non triple-fff events being
+  // (only in debug mode) decides the number of non triple-fff events being
   // recorded and in all these cases the p_n values are printed in the terminal
   const int debug_detections = 20;
 
@@ -52,10 +52,10 @@ void Lab2hist2(int filepath_option = 0, int do_debug = false) {
     break;
   }
 
-  // param[0] = intercept, param[1] = slope
-  double const p1_param[2] = {40.6223, 0.999062};
-  double const p2_param[2] = {40.6223, 0.999077};
-  double const p3_param[2] = {40.6223, 0.999524};
+  // cal[0] = intercept, param[1] = slope
+  double const p1_cal[2] = {40.6223, 0.999062};
+  double const p2_cal[2] = {40.9588, 0.999077};
+  double const p3_cal[2] = {40.2021, 0.999524};
 
   // main histogram
   auto *joint_hist = new TH1D(
@@ -74,17 +74,18 @@ void Lab2hist2(int filepath_option = 0, int do_debug = false) {
 
     // read in the values
     file >> ev >> t >> p1 >> p2 >> p3;
+
     // TODO: maybe add error argument
     if (p1 < max_pn_value) {
-      joint_hist->Fill((p1 + p1_param[0]) * 4 / p1_param[1]);
+      joint_hist->Fill((p1 + p1_cal[0]) * 4 / p1_cal[1]);
       any_update++;
       n_events[0]++;
     } else if (p2 < max_pn_value) {
-      joint_hist->Fill((p2 + p2_param[0]) * 4 / p2_param[1]);
+      joint_hist->Fill((p2 + p2_cal[0]) * 4 / p2_cal[1]);
       any_update++;
       n_events[1]++;
     } else if (p3 < max_pn_value) {
-      joint_hist->Fill((p3 + p3_param[0]) * 4 / p3_param[1]);
+      joint_hist->Fill((p3 + p3_cal[0]) * 4 / p3_cal[1]);
       any_update++;
       n_events[2]++;
     }
