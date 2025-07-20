@@ -70,11 +70,11 @@ void run(Bool_t do_print = 0) {
   ts_v.push_back(&ts3);
 
   TGraphErrors *g1 =
-      new TGraphErrors("cali_tot/cali_tot_data_1.txt", "%lg %lg %lg", "");
+      new TGraphErrors("data/cali_tot/cali_tot_1.txt", "%lg %lg %lg", "");
   TGraphErrors *g2 =
-      new TGraphErrors("cali_tot/cali_tot_data_2.txt", "%lg %lg %lg", "");
+      new TGraphErrors("data/cali_tot/cali_tot_2.txt", "%lg %lg %lg", "");
   TGraphErrors *g3 =
-      new TGraphErrors("cali_tot/cali_tot_data_3.txt", "%lg %lg %lg", "");
+      new TGraphErrors("data/cali_tot/cali_tot_3.txt", "%lg %lg %lg", "");
 
   std::vector<TGraphErrors *> g_v;
   g_v.push_back(g1);
@@ -128,10 +128,10 @@ void run(Bool_t do_print = 0) {
 
     res_v[i] = g_v[i]->GetFunction("f" + *ts_v[i]);
     std::cout << "case " + *ts_v[i] + ":" << '\n'
-              << "      Intercept: " << res_v[i]->GetParameter(0) << " ± "
-              << res_v[i]->GetParError(0) << '\n'
               << "          Slope: " << res_v[i]->GetParameter(1) << " ± "
-              << res_v[i]->GetParError(1) << '\n';
+              << res_v[i]->GetParError(1) << '\n'
+              << "      Intercept: " << res_v[i]->GetParameter(0) << " ± "
+              << res_v[i]->GetParError(0) << '\n';
 
     l_v[i]->AddEntry(g_v[i], "data points", "pe");
     l_v[i]->AddEntry(f1, "linear fit");
