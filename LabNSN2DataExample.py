@@ -5,7 +5,7 @@
 
 import sys
 
-if len(sys.argv)<2:
+if len(sys.argv) < 2:
     print('Usage: python LabNSN2DataExample.py file1 file2 ... fileN')
     sys.exit()
     
@@ -16,11 +16,12 @@ import matplotlib.pyplot as plt
 
 plt.rc('font', family = 'serif')
 plt.rcParams["figure.figsize"] = (15,8)
-    
+
 
 # (fake) tdc calibrations, so that time = tdc_value*slope_tdc + offset_tdc
-slope_tdc = 4.000			# tdc bin size, ns
+slope_tdc = 1.000		# tdc bin size, ns
 offset_tdc = 64			# tdc time offset, ns
+line_n = 0  # the line number
 
 # Read the files, append to list only if at least one plane has a valid TDC stop
 data = []
@@ -28,8 +29,11 @@ for filen in datafiles:
     with open(filen, newline = '') as f:
         reader = csv.reader(f, delimiter = ' ') 
         for row in reader:
-            row = row[1:]      #skip the '_'
+            row = row[0:]      # skip the '_'
             p = [int(row[j],16) for j in [2,3,4]]    # I don't care about event# and time here
+            line_n = line_n + 1
+            if (line_n % 1000 == 0):
+                print(line_n)
             if any((item != 4095) for item in p):    # I don't care about empty events here
                 data.append(p)
 # now data contains the three planes stop values only for non-empty events
@@ -38,11 +42,11 @@ for filen in datafiles:
 p3 = []
 for ev in data:
     if ev[0] == 4095 and ev[1] == 4095:
-        p3.append(ev[2]*slope_tdc+offset_tdc)
+        p3.append(ev[2] * slope_tdc + offset_tdc)
         
 # Plot it and format
 fig, axs = plt.subplots()
-y3,x3,h3 = axs.hist(x = p3, color = 'tab:blue', bins = numpy.arange(offset_tdc, 4095*slope_tdc + offset_tdc, 32*slope_tdc))
+y3,x3,h3 = axs.hist(x = p3, color = 'tab:blue', bins = numpy.arange(offset_tdc, 4095 * slope_tdc + offset_tdc, 32 * slope_tdc))
 axs.set_yscale('log')
 axs.title.set_fontsize(28)
 axs.title.set_text('Type BOTTOM (P3) - (' + str(len(p3)) + ' events)')
