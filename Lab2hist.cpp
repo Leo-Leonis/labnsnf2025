@@ -25,7 +25,7 @@
 //     return false;
 // }
 
-// (LEO) Static Casts as a Double the input integer to simplify writing
+// (LEO) Static Casts as a DOUBLE the input integer to simplify writing
 double scd(const int a) { return static_cast<double>(a); }
 
 // (LEO) takes in 2 values and returns the smaller one calibrated as a double
@@ -111,7 +111,9 @@ void Lab2hist(const int filepath_option = 0, const bool do_debug = false) {
                              min_x, max_x));
   }
 
-  // total histogram of reading
+  // TODO: VETTORI DI ISTOGRAMMI DI DIVISIONE.
+
+  // sum of all histograms
   TH1D *total_h =
       new TH1D("total_h", "all events time distribution;Stop time (ns);Entries",
                n_bins, min_x, max_x);
@@ -276,7 +278,7 @@ void Lab2hist(const int filepath_option = 0, const bool do_debug = false) {
   all_h[0]->SetBinContent(0, ev_count[0]);
 
   // histogram adding for tp_h and total_h
-  tp_h->Add(all_h[1]); // 1. yes no no (TP?)
+  tp_h->Add(all_h[1]); // 1. yes no no (TP)
   tp_h->Add(all_h[2]); // 2. no yes no (TP)
   tp_h->Add(all_h[3]); // 3. no no yes (TP)
   tp_h->Add(all_h[4]); // 4. yes yes no (TP)
@@ -414,9 +416,17 @@ void Lab2hist(const int filepath_option = 0, const bool do_debug = false) {
   yyn_diff_h->Draw();
   // canvas2->SetLogy(0);
 
+  TCanvas *canvas3 =
+      new TCanvas("canvas3", "true positive histogram", 720, 720);
+  tp_h->SetFillColor(kBlue);
+  tp_h->Draw();
+  gPad->SetLogy(1);
+
   // writing everything to file
   TFile *res_f = new TFile("result.root", "RECREATE");
   all_sh->Write();
+  tp_h->Write();
+  yyn_diff_h->Write();
   res_f->Close();
 
   gPad->SetLogy(0);
