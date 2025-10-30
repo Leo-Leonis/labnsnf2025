@@ -127,7 +127,7 @@ TFitResultPtr testFit=tp_h->Fit(testForm,"RS+","");
   gStyle->SetPalette(kRainBow); // "kRainBow" is not colourblind friendly!
   canvas1->SetGrid();
 
-  //canvas1->SetLogy(1);
+  canvas1->SetLogy(1);
 
   canvas1->BuildLegend();
 
