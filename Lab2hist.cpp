@@ -111,7 +111,7 @@ void Lab2hist(const int filepath_option = 0, const bool do_debug = false) {
                              min_x, max_x));
   }
 
-  // TODO: VETTORI DI ISTOGRAMMI DI DIVISIONE.
+  // TODO: VETTORI DI INSTAGRAMI DI DIVISIONE.
 
   // sum of all histograms
   TH1D *total_h =

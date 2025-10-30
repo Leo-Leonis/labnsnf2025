@@ -1,24 +1,29 @@
 #include "TCanvas.h"
+#include "RooRealVar.h"
+#include "TFormula.h"
 #include "TFile.h"
 #include "TH1D.h"
 #include "THStack.h"
 #include "TLegend.h"
+#include "TF1.h"
 #include "TMath.h"
 #include "TRatioPlot.h"
 #include "TStyle.h"
 #include "RooFitResult.h"
 #include "RooRealVar.h"
-
+#include "RooGenericPdf.h"
+#include "TFile.h"
+#include "TList.h"
 #include <fstream>
 #include <iostream>
 #include <vector>
+#include "TMultiGraph.h"
 
 using namespace RooFit;
 
 double scd(const int a) { return static_cast<double>(a); }
 
 void Lab2ff(){
-  std::string filepath_string="/labnsnf2025/5b_data_conv.txt";
   gStyle->SetOptStat(111111);
   const int n_bins = 50;
   // (only in debug mode) decides the number of non triple-fff events being
@@ -31,115 +36,98 @@ void Lab2ff(){
   const int max_diff = 3;
   const int min_x = 0;
   const int max_x = 16500;
-  double const p1_cal[2] = {40.6139, 4.003800};
-  double const p2_cal[2] = {43.0851, 4.003570};
-  double const p3_cal[2] = {47.2083, 4.001930};
   double const R=1.21;
+  const double Q=0.975;
 
-  //Graphing/fitting variables
-  RooRealVar tau_0("tau_0", "mean of gaussians",  5279, 5220, 5320);
-  RooRealVar tau_mu_minus("tau_mu_minus", "mean of gaussians",  5279, 5220, 5320);
-  RooRealVar b("b", "Background",  5279, 5220, 5320);
-  std::array<TString, 3> ev_str;
-  ev_str[0] = "\"no yes no\"";
-  ev_str[1] = "\"no no yes\"";
-  ev_str[2] = "\"yes yes no\"";
-
-  std::vector<TH1D *> all_h;
-  all_h.reserve(3);
-  for (size_t i = 0; i != 3; i++) {
-    all_h.push_back(new TH1D(ev_str[i] + " evs",
-                             ev_str[i] + " evs;Stop time (ns);Entries", n_bins,
-                             min_x, max_x));
-  }
 
 
   // histogram that contains all true positive events
-  TH1D *tp_h = new TH1D(
-      "tp_h", "all true positive time distribution;Stop time (ns);Entries",
-      n_bins, min_x, max_x);
+  TH1D *tp_h = new TH1D();
 
-  // distribution of time difference in "yes yes no" events, not used yet to rule out entries
-  TH1D *yyn_diff_h = new TH1D("yyn_diff_h",
-                              "t_{PL1} - t_{PL2} in \"yes yes no\" events;time "
-                              "difference (ns/4);Entries",
-                              40, -20, 20); // bin = 40 is maximum around
+TFile *result=new TFile("result.root") ;
+tp_h=(TH1D*)result->Get("tp_h");
+int tp_count=tp_h->GetEntries();
+//Fitting
+//Warning: cannot call variable t in TFormula (TF1) as it apparently treats it as a fourth
+//variable even if no other variables are present and contrary to the reference guide
+//Full equation, fitting for tau0, tauc/tau_mu^minus, and b
 
-  int ev_n, p1, p2, p3;
-  double t;
-  int n_detections = 0; // number of detections
-  //       2. no yes no (true positive)
-  //       3. no no yes (true positive)
-  //       4. yes yes no (true positive, |p1-p2| < max_diff)
-  int tp_count = 0;
-  int pn_count[3] = {0, 0, 0}; // independent pn counts
+TF1 *fullForm=new TF1("fullForm","[N]*exp(-x/[tau0])*(1+exp(-x/[tauC])/[R])+[b]",0,17000);
 
-  // integer that detects any kind of different case other than triple-fff event
-  // bool any_update = false;
+std::cout<<fullForm->GetParNumber("tauC")<<std::endl;
+std::cout<<fullForm->GetParNumber("t0")<<std::endl;
+std::cout<<fullForm->GetParNumber("R")<<std::endl;
+std::cout<<fullForm->GetParNumber("N")<<std::endl;
+std::cout<<fullForm->GetParNumber("tau0")<<std::endl;
+std::cout<<fullForm->GetParNumber("b")<<"\n"<<std::endl;
 
-  std::ifstream file(filepath_string.c_str());
+//N
+fullForm->FixParameter(0,tp_count);
+//t0
+fullForm->FixParameter(3,4);
+//R
+fullForm->FixParameter(1,R);
+//b
+fullForm->SetParLimits(2,0,16000);
+//tauC
+fullForm->SetParLimits(5,0,16000);
+//tau0
+fullForm->SetParLimits(4,0,16000);
+//Reduced equation, fitting only for tau0 and b.
+TF1 *redForm=new TF1("redForm","[N]*exp(-[t0]/[tau0])*exp(-x/[tau0])+[b]",4000,17000);
+std::cout<<redForm->GetParNumber("t0")<<std::endl;
+std::cout<<redForm->GetParNumber("N")<<std::endl;
+std::cout<<redForm->GetParNumber("tau0")<<std::endl;
+std::cout<<redForm->GetParNumber("b")<<std::endl;
+//N
+redForm->FixParameter(0,tp_count);
+//tau0
+redForm->SetParLimits(3,0,1000);
+//b
+fullForm->SetParLimits(1,0,1000);
+//t0
+fullForm->FixParameter(2,4);
 
-  double value; // placeholder value
+  gROOT->SetStyle("Modern");
 
-   while (!file.eof()) {
-    // read in the values
-    file >> ev_n >> t >> p1 >> p2 >> p3;
+  fullForm->SetLineColor(kOrange);
+  redForm->SetLineColor(kCyan);
 
-    //Deleted all conditions not for (even conditionally) TP, as per list
-    if (p1 + p2 + p3 == 12285) { // 0. no no no no no wait wait wait wait
-      continue; // if no stop then skip
-    }
+    int f=4;
+  int b=23;
 
-    n_detections++;
-    if (p1 == max_pn) {
-      // no xxx xxx
-      if ((p2 == max_pn)&&(p3 != max_pn)) {
-        // no yes no
-          tp_count++; 
-          value = scd(p2) * p2_cal[1] + p2_cal[0];
-
-          all_h[0]->Fill(scd(p2) * p2_cal[1] + p2_cal[0]);
-          tp_h->Fill(value);
-      } else if((p2 == max_pn)&&(p3 != max_pn)){
-        // no no yes
-          pn_count[1]++;
-          tp_count++; 
-          value = scd(p3) * p3_cal[1] + p3_cal[0];
-
-          tp_h->Fill(value);
-          all_h[3]->Fill(scd(p3) * p3_cal[1] + p3_cal[0]);
-      }
-        
-      }  else if((p2!=max_pn)&&(p3==max_pn)){       
-        // yes yes no
-        pn_count[2]++;
-
-          yyn_diff_h->Fill(p1 - p2);
-
-          if (p1 <= p2)
-            value = scd(p1) * p1_cal[1] + p1_cal[0];
-          else
-            value = scd(p2) * p2_cal[1] + p2_cal[0];
-      
-          if (TMath::Abs(p1 - p2) <= max_diff) {
-            tp_count++; // 4. yes yes no (TP)
-            tp_h->Fill(value);
-            all_h[2]->Fill(value);
-          }
-
-
-    }
-  }
+  gStyle->SetCanvasColor(b);
+    gStyle->SetTitleFillColor(b);
+  gStyle->SetStatColor(b);
+    gStyle->SetFrameLineColor(f);
+  gStyle->SetGridColor(f);
+  gStyle->SetStatTextColor(f);
+  gStyle->SetTitleTextColor(f);
+  gStyle->SetLabelColor(f,"xy");
+  gStyle->SetTitleColor(f,"xy");
+  gStyle->SetAxisColor(f,"xy");
+TCanvas *canvas1 = new TCanvas("canvas1", "Final Fitting", 1280, 720);
+//TMultiGraph *collection=new TMultiGraph();
+tp_h->SetFillColor(kPink);
+tp_h->SetMarkerStyle(kFullCircle);
+TFitResultPtr fullFit=tp_h->Fit(fullForm,"RS","");
+TFitResultPtr redFit=tp_h->Fit(redForm,"RS+","");
 
 
-  for (TH1D *hist : all_h) {
-    tp_h->Add(hist);
-    hist->SetMarkerStyle(kFullCircle);
-  }
-  TCanvas *canvas1 = new TCanvas("canvas1", "Final Fitting", 1280, 720);
+TF1 *testForm=new TF1("testForm","[e]*exp(-x/[s])",0,17000);
+  testForm->SetLineColor(kViolet);
+  testForm->FixParameter(0,tp_count);
+TFitResultPtr testFit=tp_h->Fit(testForm,"RS+","");
+
+  
   gStyle->SetPalette(kRainBow); // "kRainBow" is not colourblind friendly!
-  gPad->SetGrid();
-  gPad->SetLogy();
-  tp_h->Draw("Final Fantasy");
-  gPad->BuildLegend();
+  canvas1->SetGrid();
+
+  //canvas1->SetLogy(1);
+
+  canvas1->BuildLegend();
+
+gPad->Update();
+
+
 }
