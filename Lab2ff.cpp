@@ -14,10 +14,12 @@
 #include "RooGenericPdf.h"
 #include "TFile.h"
 #include "TList.h"
+#include "TLatex.h"
+
+
 #include <fstream>
 #include <iostream>
-#include <vector>
-#include "TMultiGraph.h"
+
 
 using namespace RooFit;
 
@@ -37,7 +39,7 @@ void Lab2ff(){
   const int min_x = 0;
   const int max_x = 16500;
   double const R=1.21;
-  const double Q=0.975;
+  const double lambdaC=4.4*pow(10,-6);
 
 
 
@@ -55,7 +57,6 @@ int tp_count=tp_h->GetEntries();
 TF1 *fullForm=new TF1("fullForm","[N]*exp(-x/[tau0])*(1+exp(-x/[tauC])/[R])+[b]",0,17000);
 
 std::cout<<fullForm->GetParNumber("tauC")<<std::endl;
-std::cout<<fullForm->GetParNumber("t0")<<std::endl;
 std::cout<<fullForm->GetParNumber("R")<<std::endl;
 std::cout<<fullForm->GetParNumber("N")<<std::endl;
 std::cout<<fullForm->GetParNumber("tau0")<<std::endl;
@@ -63,30 +64,33 @@ std::cout<<fullForm->GetParNumber("b")<<"\n"<<std::endl;
 
 //N
 fullForm->FixParameter(0,tp_count);
-//t0
-fullForm->FixParameter(3,4);
 //R
 fullForm->FixParameter(1,R);
 //b
-fullForm->SetParLimits(2,0,16000);
+//fullForm->SetParLimits(2,0,16000);
+fullForm->SetParameter(2,50);
 //tauC
-fullForm->SetParLimits(5,0,16000);
+//fullForm->SetParLimits(4,0,16000);
+fullForm->SetParameter(4,100);
 //tau0
-fullForm->SetParLimits(4,0,16000);
+//fullForm->SetParLimits(3,0,16000);
+fullForm->SetParameter(3,800);
 //Reduced equation, fitting only for tau0 and b.
-TF1 *redForm=new TF1("redForm","[N]*exp(-[t0]/[tau0])*exp(-x/[tau0])+[b]",4000,17000);
+TF1 *redForm=new TF1("redForm","[N]*exp(-x/[tau])+[b]",4000,17000);
 std::cout<<redForm->GetParNumber("t0")<<std::endl;
 std::cout<<redForm->GetParNumber("N")<<std::endl;
-std::cout<<redForm->GetParNumber("tau0")<<std::endl;
+std::cout<<redForm->GetParNumber("tau")<<std::endl;
 std::cout<<redForm->GetParNumber("b")<<std::endl;
 //N
 redForm->FixParameter(0,tp_count);
 //tau0
-redForm->SetParLimits(3,0,1000);
+//redForm->SetParLimits(3,0,1000);
+redForm->SetParameter(3,200);
 //b
-fullForm->SetParLimits(1,0,1000);
+//redForm->SetParLimits(1,0,1000);
+redForm->SetParameter(1,50);
 //t0
-fullForm->FixParameter(2,4);
+redForm->FixParameter(2,4);
 
   gROOT->SetStyle("Modern");
 
@@ -97,9 +101,9 @@ fullForm->FixParameter(2,4);
   int b=23;
 
   gStyle->SetCanvasColor(b);
-    gStyle->SetTitleFillColor(b);
+  gStyle->SetTitleFillColor(b);
   gStyle->SetStatColor(b);
-    gStyle->SetFrameLineColor(f);
+  gStyle->SetFrameLineColor(f);
   gStyle->SetGridColor(f);
   gStyle->SetStatTextColor(f);
   gStyle->SetTitleTextColor(f);
@@ -107,16 +111,16 @@ fullForm->FixParameter(2,4);
   gStyle->SetTitleColor(f,"xy");
   gStyle->SetAxisColor(f,"xy");
 TCanvas *canvas1 = new TCanvas("canvas1", "Final Fitting", 1280, 720);
-//TMultiGraph *collection=new TMultiGraph();
 tp_h->SetFillColor(kPink);
 tp_h->SetMarkerStyle(kFullCircle);
 TFitResultPtr fullFit=tp_h->Fit(fullForm,"RS","");
 TFitResultPtr redFit=tp_h->Fit(redForm,"RS+","");
 
 
-TF1 *testForm=new TF1("testForm","[e]*exp(-x/[s])",0,17000);
+TF1 *testForm=new TF1("testForm","[0]*exp(-x/[1])",1000,17000);
   testForm->SetLineColor(kViolet);
   testForm->FixParameter(0,tp_count);
+  testForm->SetParameter(1,10000);
 TFitResultPtr testFit=tp_h->Fit(testForm,"RS+","");
 
   
@@ -129,5 +133,17 @@ TFitResultPtr testFit=tp_h->Fit(testForm,"RS+","");
 
 gPad->Update();
 
+//TODO
+//add TLatex symbols for parameters
+//Fix cutoff for redform, the equation that ignores muon capture
+//Check redForm equation
+std::cout<<"Chi^2:"<<std::endl;
+std::cout<<"Full fit: "<<fullForm->GetChisquare()<<std::endl;
+std::cout<<"Reduced fit: "<<redForm->GetChisquare()<<std::endl;
+double tau0=fullForm->GetParameter("tau0");
+double tauC=fullForm->GetParameter("tauC");
+double Q=(1/(tau0+tauC)-lambdaC)*tau0;
+std::cout<<"Huff Factor (Q): "<<std::endl;
+std::cout<<Q<<std::endl;
 
 }
