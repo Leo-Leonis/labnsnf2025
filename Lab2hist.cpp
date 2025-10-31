@@ -1,11 +1,6 @@
-// #include "RooCategory.h"
-// #include "RooDataSet.h"
-// #include "RooFitResult.h"
-// #include "RooHist.h"
-// #include "RooPlot.h"
-// #include "RooRealVar.h"
 #include "TCanvas.h"
 #include "TFile.h"
+#include "TGraph.h"
 #include "TH1D.h"
 #include "THStack.h"
 #include "TLegend.h"
@@ -38,9 +33,35 @@ double scd(const int a) { return static_cast<double>(a); }
 //   }
 // }
 
-void Lab2hist(const int filepath_option = 0, const bool do_debug = false) {
+// (LEO) Sets the default style of the graphs produced
+void set_style() {
+  // gStyle->SetOptStat(111110);
+  gStyle->SetOptStat(0);
 
-  gStyle->SetOptStat(111111);
+  // pad
+  gStyle->SetPadLeftMargin(0.12);
+  // gStyle->SetPadRightMargin(1);
+  gStyle->SetPadTopMargin(0.07);
+  gStyle->SetPadBottomMargin(0.1);
+
+  // title
+  gStyle->SetTitleFont(62, "");
+  gStyle->SetTitleSize(.05, "");
+
+  // axis
+  gStyle->SetAxisMaxDigits(4);
+  gStyle->SetStripDecimals(kFALSE); // all numbers with same number of decimals
+  gStyle->SetLabelSize(.05, "X");
+  gStyle->SetLabelSize(.05, "Y");
+  gStyle->SetTitleSize(.05, "X");
+  gStyle->SetTitleSize(.05, "Y");
+  gStyle->SetTitleOffset(1.3, "Y"); // ROOT bug: "x" does y-axis and viceversa
+}
+
+void Lab2hist(const int filepath_option = 0, const bool do_print = false,
+              const bool do_debug = false) {
+
+  set_style();
 
   const int n_bins = 50;
   // (only in debug mode) decides the number of non triple-fff events being
@@ -54,17 +75,13 @@ void Lab2hist(const int filepath_option = 0, const bool do_debug = false) {
   const int min_x = 0;
   const int max_x = 16500;
 
-  if (do_debug == 0)
-    std::cout << "LEO_INFO: debug mode (=stop at 20 events) not activated"
-              << '\n';
-
   std::string filepath_string;
   switch (filepath_option) {
   case 0:
-    std::cout
-        << "LEO_ERROR: Please execute the file by typing "
-           "\"Lab2hist(<file_id>)\" with file_id = 1 for Makar, 2 for Leo."
-        << '\n';
+    std::cout << "\033[1;31mLEO_ERROR: Please execute the file by typing "
+                 "\"Lab2hist(<file_id>)\" with file_id = 1 for Makar, 2 for "
+                 "Leo.\033[0m"
+              << '\n';
     return;
     break;
 
@@ -78,13 +95,20 @@ void Lab2hist(const int filepath_option = 0, const bool do_debug = false) {
 
   default:
     std::cout
-        << "LEO_ERROR: invalid filepath_option. Please execute the file by "
-           "typing \"Lab2hist(<file_id>)\" with file_id = 1 for Makar, 2 for "
-           "Leo."
+        << "\033[31;1mLEO_ERROR: invalid filepath_option. Please execute the "
+           "file by typing \"Lab2hist(<file_id>)\" with file_id = 1 for Makar, "
+           "2 for "
+           "Leo.\033[0m"
         << '\n';
     return;
     break;
   }
+
+  if (do_debug == 0)
+    std::cout
+        << "\033[33;1mLEO_INFO: NO debug mode (=stop at 20 events).\033[22m "
+           "Activate debug mode by executing Lab2hist(x,x,1) \033[0m"
+        << '\n';
 
   // cal[0] = intercept, cal[1] = slope
   double const p1_cal[2] = {40.6139, 4.003800};
@@ -103,31 +127,29 @@ void Lab2hist(const int filepath_option = 0, const bool do_debug = false) {
   ev_str[8] = "\"yes yes no (FP)\"";
 
   // collection of all histograms
-  std::vector<TH1D *> all_h;
-  all_h.reserve(9);
+  std::vector<TH1D *> all_h_v;
+  all_h_v.reserve(9);
   for (size_t i = 0; i != 9; i++) {
-    all_h.push_back(new TH1D(ev_str[i] + " evs",
-                             ev_str[i] + " evs;Stop time (ns);Entries", n_bins,
-                             min_x, max_x));
+    all_h_v.push_back(new TH1D(ev_str[i] + " evs",
+                               ev_str[i] + " evs;Stop time (ns);Entries",
+                               n_bins, min_x, max_x));
   }
-
-  // TODO: VETTORI DI INSTAGRAMI DI DIVISIONE.
 
   // sum of all histograms
   TH1D *total_h =
-      new TH1D("total_h", "all events time distribution;Stop time (ns);Entries",
+      new TH1D("total_h", "all events time histogram;Stop time (ns);Entries",
                n_bins, min_x, max_x);
 
   // histogram that contains all true positive events
   TH1D *tp_h = new TH1D(
-      "tp_h", "all true positive time distribution;Stop time (ns);Entries",
-      n_bins, min_x, max_x);
+      "tp_h", "all true positive time histogram;Stop time (ns);Entries", n_bins,
+      min_x, max_x);
 
-  // distribution of time difference in "yes yes no" events
+  // histogram of time difference in "yes yes no" events
   TH1D *yyn_diff_h = new TH1D("yyn_diff_h",
-                              "t_{PL1} - t_{PL2} in \"yes yes no\" events;time "
-                              "difference (ns/4);Entries",
-                              40, -20, 20); // bin = 40 is maximum around
+                              "t_{PL1} - t_{PL2} in \"yes yes no\" "
+                              "events;time difference (FPGA counts);Entries",
+                              41, -20.5, 20.5); // bin = 40 is maximum around
 
   int ev_n, p1, p2, p3;
   double t;
@@ -187,7 +209,7 @@ void Lab2hist(const int filepath_option = 0, const bool do_debug = false) {
               value = scd(p3) * p3_cal[1] + p3_cal[0];
           }
 
-          all_h[7]->Fill(value);
+          all_h_v[7]->Fill(value);
         } else {
           yyn_diff_h->Fill(p1 - p2);
 
@@ -199,10 +221,10 @@ void Lab2hist(const int filepath_option = 0, const bool do_debug = false) {
           if (TMath::Abs(p1 - p2) <= max_diff) {
             ev_count[4]++; // 4. yes yes no (TP)
             // tp_h->Fill(value);
-            all_h[4]->Fill(value);
+            all_h_v[4]->Fill(value);
           } else {
             ev_count[8]++; // 8. yes yes no (FP)
-            all_h[8]->Fill(value);
+            all_h_v[8]->Fill(value);
           }
         }
       } else {
@@ -212,13 +234,13 @@ void Lab2hist(const int filepath_option = 0, const bool do_debug = false) {
           ev_count[5]++; // 5. yes no yes
 
           if (p1 <= p3)
-            all_h[5]->Fill(scd(p1) * p1_cal[1] + p1_cal[0]);
+            all_h_v[5]->Fill(scd(p1) * p1_cal[1] + p1_cal[0]);
           else
-            all_h[5]->Fill(scd(p3) * p3_cal[1] + p3_cal[0]);
+            all_h_v[5]->Fill(scd(p3) * p3_cal[1] + p3_cal[0]);
         } else {
           ev_count[1]++; // 1. yes no no
           // value = scd(p1) * p1_cal[1] + p1_cal[0];
-          all_h[1]->Fill(scd(p1) * p1_cal[1] + p1_cal[0]);
+          all_h_v[1]->Fill(scd(p1) * p1_cal[1] + p1_cal[0]);
           // tp_h->Fill(value);
         }
       }
@@ -232,15 +254,15 @@ void Lab2hist(const int filepath_option = 0, const bool do_debug = false) {
           ev_count[6]++; // 6. no yes yes
 
           if (p2 <= p3)
-            all_h[6]->Fill(scd(p2) * p2_cal[1] + p2_cal[0]);
+            all_h_v[6]->Fill(scd(p2) * p2_cal[1] + p2_cal[0]);
           else
-            all_h[6]->Fill(scd(p3) * p3_cal[1] + p3_cal[0]);
+            all_h_v[6]->Fill(scd(p3) * p3_cal[1] + p3_cal[0]);
 
         } else {
           ev_count[2]++; // 2. no yes no
           // value = scd(p2) * p2_cal[1] + p2_cal[0];
 
-          all_h[2]->Fill(scd(p2) * p2_cal[1] + p2_cal[0]);
+          all_h_v[2]->Fill(scd(p2) * p2_cal[1] + p2_cal[0]);
           // tp_h->Fill(value);
         }
       } else {
@@ -251,7 +273,7 @@ void Lab2hist(const int filepath_option = 0, const bool do_debug = false) {
           // value = scd(p3) * p3_cal[1] + p3_cal[0];
 
           // tp_h->Fill(value);
-          all_h[3]->Fill(scd(p3) * p3_cal[1] + p3_cal[0]);
+          all_h_v[3]->Fill(scd(p3) * p3_cal[1] + p3_cal[0]);
         } else { // no no no (check case if all correct)
           if (p1 + p2 + p3 != max_pn * 3) {
             std::cout << "LEO_ERROR: event classification error: p1, p2 "
@@ -275,15 +297,15 @@ void Lab2hist(const int filepath_option = 0, const bool do_debug = false) {
   }
 
   // adding no no no histogram ("0" is the underflow bin)
-  all_h[0]->SetBinContent(0, ev_count[0]);
+  all_h_v[0]->SetBinContent(0, ev_count[0]);
 
   // histogram adding for tp_h and total_h
-  tp_h->Add(all_h[1]); // 1. yes no no (TP)
-  tp_h->Add(all_h[2]); // 2. no yes no (TP)
-  tp_h->Add(all_h[3]); // 3. no no yes (TP)
-  tp_h->Add(all_h[4]); // 4. yes yes no (TP)
+  tp_h->Add(all_h_v[1]); // 1. yes no no (TP)
+  tp_h->Add(all_h_v[2]); // 2. no yes no (TP)
+  tp_h->Add(all_h_v[3]); // 3. no no yes (TP)
+  tp_h->Add(all_h_v[4]); // 4. yes yes no (TP)
 
-  for (TH1D *hist : all_h) {
+  for (TH1D *hist : all_h_v) {
     total_h->Add(hist);
   }
 
@@ -300,7 +322,7 @@ void Lab2hist(const int filepath_option = 0, const bool do_debug = false) {
 
   std::cout << "TOTAL EVENTS: " << ev_n << '\n';
 
-  std::cout << "TRUE NEGATIVE:" << '\n'
+  std::cout << "TRUE NEGATIVES:" << '\n'
             << '\t' << "no no no " << '\t' << ev_count[0] << '\t' << "("
             << scd(ev_count[0]) * 100 / ev_cast << "%)" << '\n';
 
@@ -309,6 +331,9 @@ void Lab2hist(const int filepath_option = 0, const bool do_debug = false) {
 
   std::cout << "TRUE POSITIVES (" << sum_tp * 100 / ev_cast << "% of total, "
             << sum_tp * 100 / n_det_cast << "% of NTFs):" << '\n'
+            << '\t' << "yes no no " << '\t' << ev_count[1] << '\t' << "("
+            << scd(ev_count[1]) * 100 / ev_cast << "% of total, "
+            << scd(ev_count[1]) * 100 / n_det_cast << "% of NTFs)" << '\n'
             << '\t' << "no yes no " << '\t' << ev_count[2] << '\t' << "("
             << scd(ev_count[2]) * 100 / ev_cast << "% of total, "
             << scd(ev_count[2]) * 100 / n_det_cast << "% of NTFs)" << '\n'
@@ -321,9 +346,6 @@ void Lab2hist(const int filepath_option = 0, const bool do_debug = false) {
 
   std::cout << "FALSE POSITIVES (" << sum_fp * 100 / ev_cast << "% of total, "
             << sum_fp * 100 / n_det_cast << "% of NTFs):" << '\n'
-            << '\t' << "yes no no " << '\t' << ev_count[1] << '\t' << "("
-            << scd(ev_count[1]) * 100 / ev_cast << "% of total, "
-            << scd(ev_count[1]) * 100 / n_det_cast << "% of NTFs)" << '\n'
             << '\t' << "yes no yes " << '\t' << ev_count[5] << '\t' << "("
             << scd(ev_count[5]) * 100 / ev_cast << "% of total, "
             << scd(ev_count[5]) * 100 / n_det_cast << "% of NTFs)" << '\n'
@@ -345,90 +367,143 @@ void Lab2hist(const int filepath_option = 0, const bool do_debug = false) {
 
   // tp_h->Scale(1. / scd(ev_count[2] + ev_count[3] + ev_count[4]), "");
   // // // for (size_t i = 1; i != 5; i++) {
-  // // //   all_h[i]->Scale(1. / ev_count[i], "width");
+  // // //   all_h_v[i]->Scale(1. / ev_count[i], "width");
   // // // }
-  // all_h[1]->Scale(1. / scd(ev_count[1]), "width");
-  // all_h[2]->Scale(1. / scd(ev_count[2]), "width");
-  // all_h[3]->Scale(1. / scd(ev_count[3]), "width");
-  // all_h[4]->Scale(1. / scd(ev_count[4]), "width");
+  // all_h_v[1]->Scale(1. / scd(ev_count[1]), "width");
+  // all_h_v[2]->Scale(1. / scd(ev_count[2]), "width");
+  // all_h_v[3]->Scale(1. / scd(ev_count[3]), "width");
+  // all_h_v[4]->Scale(1. / scd(ev_count[4]), "width");
   // tp_h->SetFillColor(kBlue);
   // tp_h->SetLineColor(kBlue);
   // tp_h->SetMarkerColor(kBlue);
   // tp_h->SetMarkerStyle(20);
-  for (TH1D *hist : all_h) {
+
+  for (TH1D *hist : all_h_v) {
     hist->SetMarkerStyle(kFullCircle);
+    // hist->SetMarkerSize(1.4);
     // hist->SetLineColorAlpha(0, 0.);
   }
 
   THStack *all_sh =
       new THStack("all_sh", "All events histogram; Stop time (ns); Entries");
   // all_sh->Add(tp_h);
-  for (TH1D *hist : all_h) {
-    all_sh->Add(hist);
+  for (size_t i = 1; i != all_h_v.size(); i++) {
+    all_sh->Add(all_h_v[i]);
   }
 
-  THStack *all_div_sh = new THStack(
-      "all_div_sh", "relative presence histogram; Stop time (ns); Entries");
-  for (TH1D *hist : all_h) {
-    all_div_sh->Add(hist);
-  }
+  /////////////////////// canvas 1 ///////////////////////////////////
 
-  TCanvas *canvas1 = new TCanvas("canvas1", "Joint histogram", 1280, 720);
+  TCanvas *canvas1 = new TCanvas("canvas1", "Joint histogram", 1440, 720);
   canvas1->Divide(2, 1);
   canvas1->cd(1);
 
-  for (size_t i = 0; i != all_h.size(); i++) {
-    // all_h[i]->Scale(1. / all_h[i]->Integral());
-  }
-
-  gStyle->SetPalette(kRainBow); // "kRainBow" is not colourblind friendly!
-  gPad->SetGrid();
+  gStyle->SetPalette(kBird); // "kRainBow" is not colourblind friendly!
   gPad->SetLogy();
   all_sh->Draw("nostack pmc plc hist p");
-  gPad->BuildLegend();
+  gPad->BuildLegend(.62, .675, .9, .9);
 
-  std::cout << tp_h->Integral(min_x, max_x) << '\n';
+  // collection of all ratio histograms
+  std::vector<TH1D *> all_div_h_v;
+  all_div_h_v.reserve(all_h_v.size());
 
-  canvas1->cd(2);
-  for (TH1D *hist : all_h) {
-    hist->Divide(total_h);
+  // stacked histogram of all ratio histograms
+  THStack *all_div_sh = new THStack(
+      "all_div_sh", "Relative presence histogram; Stop time (ns); Entries");
+
+  // create clone histograms, divide them by total, then add them to the stacked
+  // histogram (sh), but first managing the first (i=0) histogram out of sh
+  // because it's the no-no-no evs
+  all_div_h_v.push_back(new TH1D(*all_h_v[0]));
+  all_div_h_v[0]->Divide(total_h);
+  for (size_t i = 1; i != all_h_v.size(); i++) {
+    all_div_h_v.push_back(new TH1D(*all_h_v[i]));
+    all_div_h_v[i]->Divide(total_h);
+    all_div_sh->Add(all_div_h_v[i]);
   }
 
+  canvas1->cd(2);
   gPad->SetLogy(0);
-  all_sh->Draw("pfc plc pmc");
+  all_div_sh->Draw("pfc plc pmc");
   gPad->BuildLegend();
 
-  // auto ratio_h = new TRatioPlot(tp_h, nny_h);
-  // canvas1->SetTicks(0, 1);
-  // ratio_h->Draw();
-  // ratio_h->GetLowerRefYaxis()->SetRangeUser(0., 2.);
-  // ratio_h->GetLowerRefGraph()->GetYaxis()->SetRange(0, 2);
-  // ratio_h->GetLowerRefYaxis()->SetTitle("ratio");
-  // ratio_h->GetLowYaxis()->SetNdivisions(505);
-  // tp_h->Draw();
-  // nny_h->Draw("same");
-  // add proper legend for histograms
-  // ratio_h->GetUpperPad()->cd();
+  /////////////////////// canvas 2 ///////////////////////////////////
 
   TCanvas *canvas2 =
-      new TCanvas("canvas2", "yes yes no time difference", 720, 720);
+      new TCanvas("canvas2", "\"yes yes no\" time difference", 720, 720);
+  gPad->SetLeftMargin(0.15);
+  gPad->SetRightMargin(0.07);
+  // yyn_diff_h->SetTitleOffset(1.5, "X");
   yyn_diff_h->SetFillColor(kBlue);
   yyn_diff_h->Draw();
-  // canvas2->SetLogy(0);
+  canvas2->SetLogy();
+
+  /////////////////////// canvas 3 ///////////////////////////////////
 
   TCanvas *canvas3 =
       new TCanvas("canvas3", "true positive histogram", 720, 720);
+  gPad->SetLogy();
+  total_h->SetFillColor(kRed);
+  total_h->SetLineWidth(0);
+  total_h->SetTitle("True and false positives stop time histogram");
+  total_h->GetYaxis()->SetTitleOffset(.9);
+  total_h->Draw();
   tp_h->SetFillColor(kBlue);
-  tp_h->Draw();
-  gPad->SetLogy(1);
+  tp_h->SetLineWidth(0);
+  tp_h->Draw("same");
 
-  // writing everything to file
-  TFile *res_f = new TFile("result.root", "RECREATE");
-  all_sh->Write();
-  tp_h->Write();
-  yyn_diff_h->Write();
-  res_f->Close();
+  TLegend *leg3 = new TLegend(.7, .8, .9, .93);
+  leg3->AddEntry(tp_h, "true positives", "f");
+  leg3->AddEntry(total_h, "false positives", "f");
+  // NB: here total_h is painted before and tp_h painted after, so there will be
+  // tp_h and the difference between total_h and tp_h, i.e. a histogram stacked
+  // on top of tp_h which contains the false positives
+  leg3->Draw("");
 
-  gPad->SetLogy(0);
-  gPad->SetGrid();
+  gPad->RedrawAxis(); // redraw because "same" drawing option printed on top
+  gPad->RedrawAxis("G");
+
+  /////////////////////// canvas 4 ///////////////////////////////////
+
+  TCanvas *canvas4 = new TCanvas("canvas4", "Ratio", 720, 720);
+  auto ratio_h = new TRatioPlot(tp_h, total_h);
+  gPad->SetLogy();
+  canvas4->SetTicks(0, 1);
+  // ratio_h->GetLowerRefYaxis()->SetRangeUser(0., 2.);
+  // ratio_h->GetLowerRefYaxis()->SetTitle("ratio");
+  ratio_h->GetLowYaxis()->SetNdivisions(505);
+  ratio_h->Draw();
+  ratio_h->GetLowerRefGraph()->GetYaxis()->SetRange(0, 2);
+  ratio_h->GetUpperPad()->cd();
+  gPad->BuildLegend();
+
+  ////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////
+
+  // generate .root file and save graphs if do_print is 1
+  if (do_print == false) {
+    std::cout
+        << "\033[1;31mLEO_INFO: graphs and .root files won't be saved!\033[22m "
+           "To save the files set do_print to 1 by executing with "
+           "Lab2hist(x,1).\033[0m"
+        << '\n';
+  } else {
+    // saving all histograms in one .root files
+    TFile *res_f = new TFile("result.root", "RECREATE");
+    all_sh->Write();
+    total_h->Write();
+    tp_h->Write();
+    yyn_diff_h->Write();
+    res_f->Close();
+
+    // saving all canvases produced in different pdf's
+    canvas1->Print("graphs/Lab2hist/all_h.pdf");
+    canvas2->Print("graphs/Lab2hist/yyn_time_diff.pdf");
+    canvas3->Print("graphs/Lab2hist/tp_total_h.pdf");
+
+    std::cout
+        << "\033[1;32mLEO_WARNING: Files saved!\033[22m If errors appear "
+           "then first create a \"Lab2hist\" folder in your directory.\033[0m"
+        << '\n';
+    ;
+  }
 }
