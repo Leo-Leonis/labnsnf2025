@@ -1,10 +1,7 @@
 # directories
-cali_dec/
-cali_hex/
-cali_tot/
-main_data_dec/
-main_data_hex/
 .vscode/
+data/
+graphs/
 
 # file extensions
 *.pdf

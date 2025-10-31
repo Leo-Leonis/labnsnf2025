@@ -4,7 +4,7 @@
 // output file (with a name given below), without the "_" column.
 // This file does not require ROOT.
 
-// TO COMPILE:
+// TO COMPILE: (assumes that g++ is installed, idk about other c++ compilers...)
 // g++ -Wall -Wextra convertHex2Dec.cpp -o convertHex2Dec
 
 // TO EXECUTE:

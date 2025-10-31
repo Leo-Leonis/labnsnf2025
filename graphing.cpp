@@ -165,9 +165,9 @@ void run(Bool_t do_print = 0) {
                  "generated.\033[0m"
               << '\n';
   } else {
-    c1->Print("cali_1.pdf");
-    c2->Print("cali_2.pdf");
-    c3->Print("cali_3.pdf");
+    c1->Print("graphs/graphing/cali_1.pdf");
+    c2->Print("graphs/graphing/cali_2.pdf");
+    c3->Print("graphs/graphing/cali_3.pdf");
   }
 
   return;
