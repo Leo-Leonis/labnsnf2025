@@ -69,7 +69,20 @@ Double_t fullEq(Double_t const *x, Double_t const *par) {
   Double_t const Lc = par[4]; // Lambda_C
   Double_t const Q = par[5];  // Huff factor
 
-  return N * (Exp(-t / t0) + (1. / R) * Exp(((-t) * (Lc + (Q / t0))))) + b;
+  return N * (Exp(-t / t0) + (1. / R) * Exp((-t) * (Lc + (Q / t0)))) + b;
+}
+
+Double_t altFullEq(Double_t const *x, Double_t const *par) {
+  using TMath::Exp;
+  Float_t const t = x[0];
+  Double_t const N1 = par[0]; // N1
+  Double_t const N2 = par[1]; // N2
+  Double_t const b = par[2];  // offset
+  Double_t const t0 = par[3]; // tau_0
+  Double_t const Lc = par[4]; // Lambda_C
+  Double_t const Q = par[5];  // Huff factor
+
+  return N1 * (Exp(-t / t0)) + N2 * Exp((-t) * (Lc + (Q / t0))) + b;
 }
 
 Double_t redEq(Double_t const *x, Double_t const *par) {
@@ -112,7 +125,7 @@ void Lab2ff() {
               << res_file->GetName() << "\".\033[0m" << '\n';
     return;
   }
-  tp_h = (TH1D *)res_file->Get("tp_h");
+  tp_h = (TH1D *)res_file->Get("tp_h_new");
   if (!tp_h) {
     std::cout
         << "\033[31;1mLEO_ERROR: could not find histogram \"tp_h\".\033[0m"
@@ -133,17 +146,49 @@ void Lab2ff() {
   ///////                0    1    2     3        4       5
 
   // fullForm->FixParameter(0, tp_count);
-  fullForm->FixParameter(1, R);
+
+  // fullForm->FixParameter(1, R);
+  fullForm->SetParameter(1, R);
+  fullForm->SetParLimits(1, 0, 2);
+
   // fullForm->SetParLimits(2,0,16000);
   fullForm->SetParameter(2, 50);
+
   // fullForm->SetParLimits(3,0,16000);
   fullForm->SetParameter(3, 800);
+
   // fullForm->SetParLimits(4,0,16000);
-  // fullForm->SetParameter(4, 0);
+  fullForm->SetParameter(4, lambdaC);
   fullForm->SetParLimits(4, 1e-3, 1e-2);
+
   fullForm->FixParameter(5, Q);
   // fullForm->SetParameter(5, 1);
   // fullForm->SetParLimits(5, 0.7, 1);
+
+  TF1 *altFullForm = new TF1("altFullForm", altFullEq, range_min, range_max, 6);
+
+  ///////                    0     1     2        3         4         5
+  altFullForm->SetParNames("N+", "N-", "b_a", "tau0_a", "labdaC_a", "Q_a");
+  ///////                    0     1     2        3         4         5
+
+  // altFullForm->FixParameter(0, tp_count);
+  altFullForm->SetParameter(0, 2000);
+
+  altFullForm->SetParameter(1, 2000);
+
+  // altFullForm->SetParLimits(2,0,16000);
+  altFullForm->SetParameter(2, 50);
+
+  // altFullForm->SetParLimits(3,0,16000);
+  altFullForm->SetParameter(3, 800);
+
+  // altFullForm->SetParLimits(4,0,16000);
+  altFullForm->SetParameter(4, lambdaC);
+  altFullForm->SetParLimits(4, 1e-3, 1e-2);
+
+  // altFullForm->FixParameter(5, Q);
+  altFullForm->FixParameter(5, 1);
+  // altFullForm->SetParLimits(5, 0.7, 1);
 
   // Reduced equation, fitting only for tau0 and b.
   TF1 *redForm = new TF1("redForm", redEq, range_min, range_max, 3);
@@ -159,32 +204,47 @@ void Lab2ff() {
   redForm->SetParameter(2, 2000);
 
   fullForm->SetLineColor(kRed);
+  altFullForm->SetLineColor(kGreen);
+  altFullForm->SetLineStyle(kDashed);
   redForm->SetLineColor(kCyan);
 
-  TCanvas *canvas1 = new TCanvas("canvas1", "Final Fitting", 720, 720);
+  // TCanvas *canvas1 = new TCanvas("canvas1", "Final Fitting", 720, 720);
   // tp_h->SetFillColor(kPink);
   tp_h->SetMarkerStyle(kFullCircle);
+  tp_h->SetFillColor(kBlue);
   tp_h->SetMarkerColor(kBlue);
-  TFitResultPtr fullFit = tp_h->Fit(fullForm, "SR", "");
-  TFitResultPtr redFit = tp_h->Fit(redForm, "SR+", "", 2000, 8000);
+  TFitResultPtr fullFit = tp_h->Fit(fullForm, "NSR", "");
+  std::cout << '\n'
+            << '\t' << "tau_C is "
+            << 1. /
+                   (fullForm->GetParameter(4) + (Q / fullForm->GetParameter(3)))
+            << '\n';
+  TFitResultPtr altFullFit = tp_h->Fit(altFullForm, "NSR+", "");
+  std::cout << '\n'
+            << '\t' << "alt_tau_C is "
+            << 1. / (altFullForm->GetParameter(4) +
+                     (Q / altFullForm->GetParameter(3)))
+            << '\n';
+  TFitResultPtr redFit = tp_h->Fit(redForm, "NSR+", "", 2000, range_max);
 
   TF1 *testForm = new TF1("testForm", test_exp, range_min, range_max, 2);
   testForm->SetLineColor(kViolet);
   testForm->SetParNames("N_t", "tau");
   testForm->SetParameter(0, 4000);
   testForm->SetParameter(1, 2000);
-  TFitResultPtr testFit = tp_h->Fit(testForm, "SR+", "", 1000, 16500);
+  TFitResultPtr testFit = tp_h->Fit(testForm, "NSR+", "", 1000, 8000);
 
+  TCanvas *canvas1 = new TCanvas("canvas1", "Final Fitting", 720, 720);
   canvas1->SetLogy();
-
+  tp_h->Draw();
+  fullForm->Draw("same");
+  altFullForm->Draw("same");
   canvas1->BuildLegend(.5, .75, .9, .93);
 
   gPad->Update();
 
   // TODO
-  // add TLatex symbols for parameters
-  // Fix cutoff for redform, the equation that ignores muon capture
-  // Check redForm equation
+  // add TLatex symbols for parameters (leo: what you mean by that?)
   std::cout << '\n' << "Chi^2:" << '\n';
   std::cout << '\t' << "Full fit: " << fullForm->GetChisquare() << '\n';
   std::cout << '\t' << "Reduced fit: " << redForm->GetChisquare() << '\n';

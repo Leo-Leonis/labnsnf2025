@@ -140,11 +140,6 @@ void Lab2hist(const int filepath_option = 0, const bool do_print = false,
       new TH1D("total_h", "all events time histogram;Stop time (ns);Entries",
                n_bins, min_x, max_x);
 
-  // histogram that contains all true positive events
-  TH1D *tp_h = new TH1D(
-      "tp_h", "all true positive time histogram;Stop time (ns);Entries", n_bins,
-      min_x, max_x);
-
   // histogram of time difference in "yes yes no" events
   TH1D *yyn_diff_h = new TH1D("yyn_diff_h",
                               "t_{PL1} - t_{PL2} in \"yes yes no\" "
@@ -157,9 +152,9 @@ void Lab2hist(const int filepath_option = 0, const bool do_print = false,
   // the cases are ("FP" = false positive, "TN" true negative):
   //       0. no no no (TN)
   //       1. yes no no (FP)
-  //       2. no yes no (true positive)
-  //       3. no no yes (true positive)
-  //       4. yes yes no (true positive, |p1-p2| < max_diff)
+  //       2. no yes no (TP)
+  //       3. no no yes (TP)
+  //       4. yes yes no (TP, |p1-p2| < max_diff)
   //       5. yes no yes (FP)
   //       6. no yes yes (FP)
   //       7. yes yes yes (FP)
@@ -299,30 +294,41 @@ void Lab2hist(const int filepath_option = 0, const bool do_print = false,
   // adding no no no histogram ("0" is the underflow bin)
   all_h_v[0]->SetBinContent(0, ev_count[0]);
 
-  // histogram adding for tp_h and total_h
-  tp_h->Add(all_h_v[1]); // 1. yes no no (TP)
-  tp_h->Add(all_h_v[2]); // 2. no yes no (TP)
-  tp_h->Add(all_h_v[3]); // 3. no no yes (TP)
-  tp_h->Add(all_h_v[4]); // 4. yes yes no (TP)
+  // histogram that contains all true positive events (w/ ynn)
+  TH1D *tp_h = new TH1D(
+      "tp_h", "all true positive time histogram;Stop time (ns);Entries", n_bins,
+      min_x, max_x);
+  tp_h->Add(all_h_v[1]); // 1. yes no no
+  tp_h->Add(all_h_v[2]); // 2. no yes no
+  tp_h->Add(all_h_v[3]); // 3. no no yes
+  tp_h->Add(all_h_v[4]); // 4. yes yes no
+
+  // histogram that contains all true positive events (w/o ynn)
+  TH1D *tp_h_new = new TH1D(
+      "tp_h_new", "all true positive time histogram;Stop time (ns);Entries",
+      n_bins, min_x, max_x);
+  tp_h_new->Add(all_h_v[2]); // 2. no yes no
+  tp_h_new->Add(all_h_v[3]); // 3. no no yes
+  tp_h_new->Add(all_h_v[4]); // 4. yes yes no
 
   for (TH1D *hist : all_h_v) {
     total_h->Add(hist);
   }
 
-  auto sum_tp = tp_h->GetEntries();
-  auto ev_cast = scd(ev_n);
-  // auto sum_tp_cast = scd(ev_count[1] + ev_count[2] + ev_count[3] +
+  auto const sum_tp = tp_h_new->GetEntries();
+  auto const ev_cast = scd(ev_n);
+  // auto const sum_tp_cast = scd(ev_count[1] + ev_count[2] + ev_count[3] +
   // ev_count[4]);
   // std::cout << "DEBUG: " << sum_tp << "and " << sum_tp << '\n';
-  // auto sum_fp_cast =
+  // auto const sum_fp_cast =
   //     scd(ev_count[1] + ev_count[5] + ev_count[6] + ev_count[7] +
   //     ev_count[8]);
-  auto sum_fp = n_detections - sum_tp;
-  auto n_det_cast = scd(n_detections);
+  auto const sum_fp = n_detections - sum_tp;
+  auto const n_det_cast = scd(n_detections);
 
   std::cout << "TOTAL EVENTS: " << ev_n << '\n';
 
-  std::cout << "TRUE NEGATIVES:" << '\n'
+  std::cout << "TRIPLE-FFF EVENTS:" << '\n'
             << '\t' << "no no no " << '\t' << ev_count[0] << '\t' << "("
             << scd(ev_count[0]) * 100 / ev_cast << "%)" << '\n';
 
@@ -331,9 +337,6 @@ void Lab2hist(const int filepath_option = 0, const bool do_print = false,
 
   std::cout << "TRUE POSITIVES (" << sum_tp * 100 / ev_cast << "% of total, "
             << sum_tp * 100 / n_det_cast << "% of NTFs):" << '\n'
-            << '\t' << "yes no no " << '\t' << ev_count[1] << '\t' << "("
-            << scd(ev_count[1]) * 100 / ev_cast << "% of total, "
-            << scd(ev_count[1]) * 100 / n_det_cast << "% of NTFs)" << '\n'
             << '\t' << "no yes no " << '\t' << ev_count[2] << '\t' << "("
             << scd(ev_count[2]) * 100 / ev_cast << "% of total, "
             << scd(ev_count[2]) * 100 / n_det_cast << "% of NTFs)" << '\n'
@@ -346,6 +349,9 @@ void Lab2hist(const int filepath_option = 0, const bool do_print = false,
 
   std::cout << "FALSE POSITIVES (" << sum_fp * 100 / ev_cast << "% of total, "
             << sum_fp * 100 / n_det_cast << "% of NTFs):" << '\n'
+            << '\t' << "yes no no " << '\t' << ev_count[1] << '\t' << "("
+            << scd(ev_count[1]) * 100 / ev_cast << "% of total, "
+            << scd(ev_count[1]) * 100 / n_det_cast << "% of NTFs)" << '\n'
             << '\t' << "yes no yes " << '\t' << ev_count[5] << '\t' << "("
             << scd(ev_count[5]) * 100 / ev_cast << "% of total, "
             << scd(ev_count[5]) * 100 / n_det_cast << "% of NTFs)" << '\n'
@@ -364,19 +370,6 @@ void Lab2hist(const int filepath_option = 0, const bool do_print = false,
             << '\t' << "p1: " << pn_count[0] << '\n'
             << '\t' << "p2: " << pn_count[1] << '\n'
             << '\t' << "p3: " << pn_count[2] << '\n';
-
-  // tp_h->Scale(1. / scd(ev_count[2] + ev_count[3] + ev_count[4]), "");
-  // // // for (size_t i = 1; i != 5; i++) {
-  // // //   all_h_v[i]->Scale(1. / ev_count[i], "width");
-  // // // }
-  // all_h_v[1]->Scale(1. / scd(ev_count[1]), "width");
-  // all_h_v[2]->Scale(1. / scd(ev_count[2]), "width");
-  // all_h_v[3]->Scale(1. / scd(ev_count[3]), "width");
-  // all_h_v[4]->Scale(1. / scd(ev_count[4]), "width");
-  // tp_h->SetFillColor(kBlue);
-  // tp_h->SetLineColor(kBlue);
-  // tp_h->SetMarkerColor(kBlue);
-  // tp_h->SetMarkerStyle(20);
 
   for (TH1D *hist : all_h_v) {
     hist->SetMarkerStyle(kFullCircle);
@@ -450,9 +443,13 @@ void Lab2hist(const int filepath_option = 0, const bool do_print = false,
   tp_h->SetFillColor(kBlue);
   tp_h->SetLineWidth(0);
   tp_h->Draw("same");
+  tp_h_new->SetFillColor(kViolet);
+  tp_h_new->SetLineWidth(0);
+  tp_h_new->Draw("same");
 
   TLegend *leg3 = new TLegend(.7, .8, .9, .93);
-  leg3->AddEntry(tp_h, "true positives", "f");
+  leg3->AddEntry(tp_h_new, "true positives (new)", "f");
+  leg3->AddEntry(tp_h, "true positives (old)", "f");
   leg3->AddEntry(total_h, "false positives", "f");
   // NB: here total_h is painted before and tp_h painted after, so there will be
   // tp_h and the difference between total_h and tp_h, i.e. a histogram stacked
@@ -465,7 +462,7 @@ void Lab2hist(const int filepath_option = 0, const bool do_print = false,
   /////////////////////// canvas 4 ///////////////////////////////////
 
   TCanvas *canvas4 = new TCanvas("canvas4", "Ratio", 720, 720);
-  auto ratio_h = new TRatioPlot(tp_h, total_h);
+  auto ratio_h = new TRatioPlot(tp_h_new, total_h);
   gPad->SetLogy();
   canvas4->SetTicks(0, 1);
   // ratio_h->GetLowerRefYaxis()->SetRangeUser(0., 2.);
@@ -492,6 +489,7 @@ void Lab2hist(const int filepath_option = 0, const bool do_print = false,
     all_sh->Write();
     total_h->Write();
     tp_h->Write();
+    tp_h_new->Write();
     yyn_diff_h->Write();
     res_f->Close();
 
