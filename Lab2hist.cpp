@@ -71,7 +71,7 @@ void Lab2hist(const int filepath_option = 0, const bool do_print = false,
   const int max_pn = 4095;
   // max difference in absolute value between coincident counts (events in which
   // there are more than 2 positive stop signals)
-  const int max_diff = 3;
+  const int max_diff = 10;
   const int min_x = 0;
   const int max_x = 16500;
 
@@ -208,10 +208,10 @@ void Lab2hist(const int filepath_option = 0, const bool do_print = false,
         } else {
           yyn_diff_h->Fill(p1 - p2);
 
-          if (p1 <= p2)
-            value = scd(p1) * p1_cal[1] + p1_cal[0];
-          else
-            value = scd(p2) * p2_cal[1] + p2_cal[0];
+          // if (p1 <= p2)
+          //   value = scd(p1) * p1_cal[1] + p1_cal[0];
+          // else
+          value = scd(p2) * p2_cal[1] + p2_cal[0];
 
           if (TMath::Abs(p1 - p2) <= max_diff) {
             ev_count[4]++; // 4. yes yes no (TP)
@@ -477,7 +477,7 @@ void Lab2hist(const int filepath_option = 0, const bool do_print = false,
   ////////////////////////////////////////////////////////////////////
 
   // generate .root file and save graphs if do_print is 1
-  if (do_print == false) {
+  if (!do_print) {
     std::cout
         << "\033[1;31mLEO_INFO: graphs and .root files won't be saved!\033[22m "
            "To save the files set do_print to 1 by executing with "
@@ -491,6 +491,7 @@ void Lab2hist(const int filepath_option = 0, const bool do_print = false,
     tp_h->Write();
     tp_h_new->Write();
     yyn_diff_h->Write();
+    all_h_v[4]->Write();
     res_f->Close();
 
     // saving all canvases produced in different pdf's
