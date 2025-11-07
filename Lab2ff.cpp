@@ -328,7 +328,7 @@ void Lab2ff() {
             << 1. / (altFullForm->GetParameter(4) +
                      (Q / altFullForm->GetParameter(3)))
             << '\n';
-  TFitResultPtr redFit = tp_h->Fit(redForm, "NSR+", "", 2000, range_max);
+  TFitResultPtr redFit = tp_h->Fit(redForm, "NSR+", "", 750, range_max);
 
   TF1 *testForm = new TF1("testForm", test_exp, range_min, range_max, 2);
   testForm->SetLineColor(kViolet);

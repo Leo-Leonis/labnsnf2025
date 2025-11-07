@@ -71,7 +71,7 @@ void Lab2hist(const int filepath_option = 0, const bool do_print = false,
   const int max_pn = 4095;
   // max difference in absolute value between coincident counts (events in which
   // there are more than 2 positive stop signals)
-  const int max_diff = 10;
+  const int max_diff = 5; // equal to 3 sigmas of yyn_diff_h
   const int min_x = 0;
   const int max_x = 16500;
 
@@ -499,10 +499,10 @@ void Lab2hist(const int filepath_option = 0, const bool do_print = false,
     canvas2->Print("graphs/Lab2hist/yyn_time_diff.pdf");
     canvas3->Print("graphs/Lab2hist/tp_total_h.pdf");
 
-    std::cout
-        << "\033[1;32mLEO_WARNING: Files saved!\033[22m If errors appear "
-           "then first create a \"Lab2hist\" folder in your directory.\033[0m"
-        << '\n';
+    std::cout << "\033[1;32mLEO_WARNING: Files saved!\033[22m If errors appear "
+                 "then first create a \"graphs/Lab2hist\" folder in your "
+                 "directory.\033[0m"
+              << '\n';
     ;
   }
 }
