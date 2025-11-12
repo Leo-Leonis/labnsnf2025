@@ -74,6 +74,29 @@ Double_t fullEq(Double_t const *x, Double_t const *par) {
   return N * (Exp(-t / t0) + (1. / R) * Exp((-t) * (LC + (Q / t0)))) + b;
 }
 
+Double_t fullEq2(Double_t const *x, Double_t const *par) {
+  using TMath::Exp;
+  Float_t const t = x[0];
+  Double_t const N = par[0];  // N
+  Double_t const R = par[1];  // R
+  Double_t const b = par[2];  // background
+  Double_t const t0 = par[3]; // tau_0
+  Double_t const tC = par[4]; // tau_C
+
+  return N * Exp(-t / t0) * ( 1. + (1. / R) * Exp(-t/tC)) + b;
+}
+Double_t fullEq3(Double_t const *x, Double_t const *par) {
+  using TMath::Exp;
+  Float_t const t = x[0];
+  Double_t const N = par[0];  // N
+  Double_t const R = par[1];  // R
+  Double_t const b = par[2];  // background
+  Double_t const t0 = par[3]; // tau_0
+  Double_t const tC = par[4]; // tau_C
+
+  return N * Exp(-t / t0) * ( 1. + (1. / R) * Exp(-t/tC)) + b;
+}
+
 Double_t altFullEq(Double_t const *x, Double_t const *par) {
   using TMath::Exp;
   Float_t const t = x[0];
@@ -235,7 +258,7 @@ void Lab2ff() {
   TF1 *fullForm = new TF1("fullForm", fullEq, range_min, range_max, 6);
 
   ///////                0    1    2     3        4       5
-  fullForm->SetParNames("N", "R", "b", "tau0", "labdaC", "Q");
+  fullForm->SetParNames("N", "R", "b", "tau0", "labmdaC", "Q");
   ///////                0    1    2     3        4       5
 
   // fullForm->FixParameter(0, tp_count);
@@ -258,10 +281,52 @@ void Lab2ff() {
   fullForm->SetParameter(5, 1);
   fullForm->SetParLimits(5, 0.7, 1);
 
+
+  TF1 *fullForm2 = new TF1("fullForm2", fullEq2, range_min, range_max, 5);
+
+  ///////                0    1    2     3        4       
+  fullForm2->SetParNames("N", "R", "b", "tau0", "tauC");
+  ///////                0    1    2     3        4       
+
+  // fullForm->FixParameter(0, tp_count);
+
+  // fullForm->FixParameter(1, R);
+  fullForm2->SetParameter(1, R);
+  fullForm2->SetParLimits(1, 0, 2);
+
+  // fullForm->SetParLimits(2,0,16000);
+  fullForm2->SetParameter(2, 50);
+
+  // fullForm->SetParLimits(3,0,16000);
+  fullForm2->SetParameter(3, 800);
+
+  // fullForm->FixParameter(4, lambdaC);
+  fullForm2->SetParameter(4, 200);
+  fullForm2->SetParLimits(4, 0, 10000);
+
+  TF1 *fullForm3 = new TF1("fullForm3", fullEq3, range_min, range_max, 5);
+
+  ///////                0    1    2     3        4       
+  fullForm2->SetParNames("N", "R", "b", "tau0", "tauC");
+  ///////                0    1    2     3        4       
+
+
+  // fullForm->FixParameter(1, R);
+  fullForm2->SetParameter(1, R);
+  fullForm2->SetParLimits(1, 0, 2);
+
+  // fullForm->SetParLimits(2,0,16000);
+  fullForm2->SetParameter(2, 50);
+
+  fullForm3->FixParameter(3, 2196);
+  fullForm3->FixParameter(4, 206);
+
+
+
   TF1 *altFullForm = new TF1("altFullForm", altFullEq, range_min, range_max, 6);
 
   ///////                    0     1     2        3         4         5
-  altFullForm->SetParNames("N+", "N-", "b_a", "tau0_a", "labdaC_a", "Q_a");
+  altFullForm->SetParNames("N+", "N-", "b_a", "tau0_a", "labmdaC_a", "Q_a");
   ///////                    0     1     2        3         4         5
 
   // altFullForm->FixParameter(0, tp_count);
@@ -297,6 +362,9 @@ void Lab2ff() {
   redForm->SetParameter(2, 2000);
 
   fullForm->SetLineColor(kRed);
+  fullForm2->SetLineColor(kBlue);
+  fullForm3->SetLineColor(kOrange);
+  redForm->SetLineColor(kCyan);
   altFullForm->SetLineColor(kGreen);
   altFullForm->SetLineStyle(kDashed);
   redForm->SetLineColor(kCyan);
@@ -308,7 +376,9 @@ void Lab2ff() {
   tp_h->SetMarkerColor(kBlack);
   tp_h->SetLineWidth(1);
   tp_h->SetLineColor(kBlack);
-  // TFitResultPtr fullFit = tp_h->Fit(fullForm, "NSR", "");
+  //TFitResultPtr fullFit = tp_h->Fit(fullForm, "NSR", "");
+  TFitResultPtr fullFit2 = tp_h->Fit(fullForm2, "NSR+", "");
+  TFitResultPtr fullFit3 = tp_h->Fit(fullForm3, "NSR+", "");
 
   std::cout << "\033[1m" << '\t' << "τ_0" << "\t\t" << "τ-" << "\t\t" << "R"
             << "\t\t" << "Λ_C" << "\t\t\t" << "Q" << "\t\t" << "χ^2/NDF"
@@ -341,7 +411,9 @@ void Lab2ff() {
   canvas1->SetLogy();
   tp_h->Draw("pe1");
   fullForm->Draw("same");
-  altFullForm->Draw("same");
+  //altFullForm->Draw("same");
+  fullForm2->Draw("same");
+  fullForm3->Draw("same");
   canvas1->BuildLegend(.5, .75, .9, .93);
 
   gPad->Update();
@@ -355,6 +427,9 @@ void Lab2ff() {
   // double tauC = fullForm->GetParameter("tauC");
   // std::cout << "Huff Factor (Q): " << '\n';
   // std::cout << (1 / (tau0 + tauC) - lambdaC) * tau0 << '\n';
-
+  double temp=(1./fullForm2->GetParameter(3)) + (1./fullForm2->GetParameter(4)) - (0.975)/fullForm2->GetParameter(4);
+  std::cout<<"Full fit 2 Lambda C value: "<<temp<<std::endl;
+  std::cout<<"Full fit 2 tau C value: "<<fullForm2->GetParameter(4)<<std::endl;
+  std::cout<<fullForm2->GetParameter(3)<<std::endl;
   canvas1->Print("graphs/Lab2ff/Lab2ff.pdf");
 }
