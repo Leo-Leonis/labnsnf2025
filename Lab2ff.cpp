@@ -307,16 +307,16 @@ void Lab2ff() {
   TF1 *fullForm3 = new TF1("fullForm3", fullEq3, range_min, range_max, 5);
 
   ///////                0    1    2     3        4       
-  fullForm2->SetParNames("N", "R", "b", "tau0", "tauC");
+  fullForm3->SetParNames("N", "R", "b", "tau0", "tauC");
   ///////                0    1    2     3        4       
 
 
   // fullForm->FixParameter(1, R);
-  fullForm2->SetParameter(1, R);
-  fullForm2->SetParLimits(1, 0, 2);
+  fullForm3->SetParameter(1, R);
+  fullForm3->SetParLimits(1, 0, 2);
 
   // fullForm->SetParLimits(2,0,16000);
-  fullForm2->SetParameter(2, 50);
+  fullForm3->SetParameter(2, 50);
 
   fullForm3->FixParameter(3, 2196);
   fullForm3->FixParameter(4, 206);
@@ -414,6 +414,7 @@ void Lab2ff() {
   //altFullForm->Draw("same");
   fullForm2->Draw("same");
   fullForm3->Draw("same");
+  //fullForm3->GetParameter("");
   canvas1->BuildLegend(.5, .75, .9, .93);
 
   gPad->Update();
