@@ -517,7 +517,7 @@ void Lab2hist(const int filepath_option = 0, const bool do_print = false,
     canvas3->Print("graphs/Lab2hist/tp_total_h.pdf");
     canvas4->Print("graphs/Lab2hist/ratio.pdf");
 
-    std::cout << "\033[1;32mLEO_WARNING: Files saved!\033[22m If errors appear "
+    std::cout << "\033[1;32mLEO_INFO: Files saved!\033[22m If errors appear "
                  "then first create a \"graphs/Lab2hist\" folder in your "
                  "directory.\033[0m"
               << '\n';
