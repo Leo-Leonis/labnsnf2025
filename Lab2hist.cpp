@@ -40,7 +40,7 @@ void set_style() {
 
   // pad
   gStyle->SetPadLeftMargin(0.12);
-  // gStyle->SetPadRightMargin(1);
+  // gStyle->SetPadRightMargin(0.1);
   gStyle->SetPadTopMargin(0.07);
   gStyle->SetPadBottomMargin(0.1);
 
@@ -296,8 +296,9 @@ void Lab2hist(const int filepath_option = 0, const bool do_print = false,
 
   // histogram that contains all true positive events (w/ ynn)
   TH1D *tp_h = new TH1D(
-      "tp_h", "all true positive time histogram;Stop time (ns);Entries", n_bins,
-      min_x, max_x);
+      "tp_h",
+      "True and false positive stop time histogram;Stop time (ns);Entries",
+      n_bins, min_x, max_x);
   tp_h->Add(all_h_v[1]); // 1. yes no no
   tp_h->Add(all_h_v[2]); // 2. no yes no
   tp_h->Add(all_h_v[3]); // 3. no no yes
@@ -305,7 +306,8 @@ void Lab2hist(const int filepath_option = 0, const bool do_print = false,
 
   // histogram that contains all true positive events (w/o ynn)
   TH1D *tp_h_new = new TH1D(
-      "tp_h_new", "all true positive time histogram;Stop time (ns);Entries",
+      "tp_h_new",
+      "True and false positive stop time histogram;Stop time (ns);Entries",
       n_bins, min_x, max_x);
   tp_h_new->Add(all_h_v[2]); // 2. no yes no
   tp_h_new->Add(all_h_v[3]); // 3. no no yes
@@ -440,21 +442,21 @@ void Lab2hist(const int filepath_option = 0, const bool do_print = false,
   total_h->SetTitle("True and false positives stop time histogram");
   total_h->GetYaxis()->SetTitleOffset(.9);
   total_h->Draw();
-  tp_h->SetFillColor(kBlue);
-  tp_h->SetLineWidth(0);
-  tp_h->Draw("same");
-  tp_h_new->SetFillColor(kViolet);
+  // tp_h->SetFillColor(kBlue);
+  // tp_h->SetLineWidth(0);
+  // tp_h->Draw("same");
+  tp_h_new->SetFillColor(kBlue);
   tp_h_new->SetLineWidth(0);
   tp_h_new->Draw("same");
 
   TLegend *leg3 = new TLegend(.7, .8, .9, .93);
-  leg3->AddEntry(tp_h_new, "true positives (new)", "f");
-  leg3->AddEntry(tp_h, "true positives (old)", "f");
+  leg3->AddEntry(tp_h_new, "true positives", "f");
+  // leg3->AddEntry(tp_h, "true positives (old)", "f");
   leg3->AddEntry(total_h, "false positives", "f");
   // NB: here total_h is painted before and tp_h painted after, so there will be
   // tp_h and the difference between total_h and tp_h, i.e. a histogram stacked
   // on top of tp_h which contains the false positives
-  leg3->Draw("");
+  leg3->Draw("same");
 
   gPad->RedrawAxis(); // redraw because "same" drawing option printed on top
   gPad->RedrawAxis("G");
@@ -464,14 +466,29 @@ void Lab2hist(const int filepath_option = 0, const bool do_print = false,
   TCanvas *canvas4 = new TCanvas("canvas4", "Ratio", 720, 720);
   auto ratio_h = new TRatioPlot(tp_h_new, total_h);
   gPad->SetLogy();
-  canvas4->SetTicks(0, 1);
-  // ratio_h->GetLowerRefYaxis()->SetRangeUser(0., 2.);
-  // ratio_h->GetLowerRefYaxis()->SetTitle("ratio");
+  gPad->SetBottomMargin(1.05);
+  total_h->SetMarkerColor(kRed);
+  total_h->SetMarkerStyle(kWhite);
+  total_h->SetLineWidth(1);
+  total_h->SetLineColor(kRed);
+  total_h->SetMarkerStyle(kFullCircle);
+
+  ratio_h->SetH2DrawOpt("e1"); // drawing option for total_h ("H2")
   ratio_h->GetLowYaxis()->SetNdivisions(505);
-  ratio_h->Draw();
-  ratio_h->GetLowerRefGraph()->GetYaxis()->SetRange(0, 2);
+  ratio_h->SetSeparationMargin(0.03); // margin between low and top pad
+  ratio_h->Draw("nogrid"); // hides the horizontal dashed lines in lower plot
+
+  ratio_h->GetLowerRefGraph()->SetMinimum(0.3); // lower (ratio) range
+  ratio_h->GetLowerRefGraph()->SetMaximum(1.1);
+  ratio_h->GetUpperRefYaxis()->SetTitleOffset(1);   // upper y axis
+  ratio_h->GetLowerRefYaxis()->SetTitle("ratio");   // lower y axis
+  ratio_h->GetLowerRefXaxis()->SetTitleOffset(0.9); // lower x axis
+
   ratio_h->GetUpperPad()->cd();
-  gPad->BuildLegend();
+  TLegend *leg4 = new TLegend(.65, .7, .9, .9);
+  leg4->AddEntry(tp_h_new, "true positives", "f");
+  leg4->AddEntry(total_h, "false positives", "pe1");
+  leg4->Draw("same");
 
   ////////////////////////////////////////////////////////////////////
   ////////////////////////////////////////////////////////////////////
@@ -498,8 +515,9 @@ void Lab2hist(const int filepath_option = 0, const bool do_print = false,
     canvas1->Print("graphs/Lab2hist/all_h.pdf");
     canvas2->Print("graphs/Lab2hist/yyn_time_diff.pdf");
     canvas3->Print("graphs/Lab2hist/tp_total_h.pdf");
+    canvas4->Print("graphs/Lab2hist/ratio.pdf");
 
-    std::cout << "\033[1;32mLEO_WARNING: Files saved!\033[22m If errors appear "
+    std::cout << "\033[1;32mLEO_INFO: Files saved!\033[22m If errors appear "
                  "then first create a \"graphs/Lab2hist\" folder in your "
                  "directory.\033[0m"
               << '\n';
