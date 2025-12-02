@@ -12,6 +12,46 @@
 #include <iostream>
 #include <vector>
 
+/// @brief (LEO) Imports a TGraphs and reads the Y values of each point, then
+/// calculates and prints the value of the weighted mean and its error, returns
+/// only the weighted mean
+/// @param g The TGraph pointer from which the values are taken in
+/// @return Weighted mean
+double getWeightedMeanY(TGraph *g) {
+  // number of bins of g
+  const int nPoints = g->GetN();
+  // sum of weights (w = 1/err^2 = err^-2)
+  double_t sum_weights = 0;
+  // ratio numerator
+  double_t num = 0;
+
+  for (int i = 0; i != nPoints; i++) {
+    // current bin content
+    double_t const i_bin_content = g->GetPointY(i);
+    // current bin error
+    double_t const i_bin_error = g->GetErrorY(i + 1);
+    // std::cout << i_bin_content << " and " << i_bin_error << '\n'; // debug
+    if (i_bin_content == 0. & i_bin_error == 0.) {
+      // std::cout << "skipped" << '\n'; // debug
+      continue;
+    } else {
+      // current weight
+      double_t const i_weight = TMath::Power(i_bin_error, -2);
+      sum_weights += i_weight;
+      num += i_bin_content * i_weight;
+      // std::cout << '\t' << sum_weights << " and " << num << '\n'; // debug
+    }
+  }
+  // the weighted mean
+  double_t const ratio = num / sum_weights;
+  // the w. mean error
+  double_t const ratio_err = TMath::Power(sum_weights, -0.5);
+
+  std::cout << "weighted mean: " << ratio << " +/- " << ratio_err << '\n';
+
+  return ratio;
+}
+
 // (LEO) Compares two ints from p1 and p2 and returns the smaller one
 // bool Isp1Smaller(int pl1, int pl2) {
 //   if (pl1 < pl2)
@@ -39,7 +79,7 @@ void set_style() {
   gStyle->SetOptStat(0);
 
   // pad
-  gStyle->SetPadLeftMargin(0.12);
+  gStyle->SetPadLeftMargin(0.13);
   // gStyle->SetPadRightMargin(0.1);
   gStyle->SetPadTopMargin(0.07);
   gStyle->SetPadBottomMargin(0.1);
@@ -124,26 +164,28 @@ void Lab2hist(const int filepath_option = 0, const bool do_print = false,
   ev_str[5] = "\"yes no yes\"";
   ev_str[6] = "\"no yes yes\"";
   ev_str[7] = "\"yes yes yes\"";
-  ev_str[8] = "\"yes yes no (FP)\"";
+  ev_str[8] = "\"yes yes no (rej.)\"";
 
   // collection of all histograms
   std::vector<TH1D *> all_h_v;
   all_h_v.reserve(9);
   for (size_t i = 0; i != 9; i++) {
-    all_h_v.push_back(new TH1D(ev_str[i] + " evs",
-                               ev_str[i] + " evs;Stop time (ns);Entries",
-                               n_bins, min_x, max_x));
+    all_h_v.push_back(
+        new TH1D(ev_str[i] + " evs",
+                 ev_str[i] + " evs;Stop time (ns);Entries / (330 ns^{-1})",
+                 n_bins, min_x, max_x));
   }
 
   // sum of all histograms
-  TH1D *total_h =
-      new TH1D("total_h", "all events time histogram;Stop time (ns);Entries",
-               n_bins, min_x, max_x);
+  TH1D *total_h = new TH1D(
+      "total_h",
+      "all events time histogram;Stop time (ns);Entries / (330 ns^{-1})",
+      n_bins, min_x, max_x);
 
   // histogram of time difference in "yes yes no" events
   TH1D *yyn_diff_h = new TH1D("yyn_diff_h",
-                              "t_{PL1} - t_{PL2} in \"yes yes no\" "
-                              "events;time difference (FPGA counts);Entries",
+                              "t_{PL1} - t_{PL2} in \"yes yes no\" evs;Time "
+                              "difference (FPGA counts);Entries",
                               41, -20.5, 20.5); // bin = 40 is maximum around
 
   int ev_n, p1, p2, p3;
@@ -296,8 +338,7 @@ void Lab2hist(const int filepath_option = 0, const bool do_print = false,
 
   // histogram that contains all true positive events (w/ ynn)
   TH1D *tp_h = new TH1D(
-      "tp_h",
-      "True and false positive stop time histogram;Stop time (ns);Entries",
+      "tp_h", "Accepted evs VS all NTFs;Stop time (ns);Entries / (330 ns^{-1})",
       n_bins, min_x, max_x);
   tp_h->Add(all_h_v[1]); // 1. yes no no
   tp_h->Add(all_h_v[2]); // 2. no yes no
@@ -307,8 +348,8 @@ void Lab2hist(const int filepath_option = 0, const bool do_print = false,
   // histogram that contains all true positive events (w/o ynn)
   TH1D *tp_h_new = new TH1D(
       "tp_h_new",
-      "True and false positive stop time histogram;Stop time (ns);Entries",
-      n_bins, min_x, max_x);
+      "Accepted evs VS all NTFs;Stop time (ns);Entries / (330 ns^{-1})", n_bins,
+      min_x, max_x);
   tp_h_new->Add(all_h_v[2]); // 2. no yes no
   tp_h_new->Add(all_h_v[3]); // 3. no no yes
   tp_h_new->Add(all_h_v[4]); // 4. yes yes no
@@ -379,8 +420,9 @@ void Lab2hist(const int filepath_option = 0, const bool do_print = false,
     // hist->SetLineColorAlpha(0, 0.);
   }
 
-  THStack *all_sh =
-      new THStack("all_sh", "All events histogram; Stop time (ns); Entries");
+  THStack *all_sh = new THStack(
+      "all_sh",
+      "All events histogram; Stop time (ns); Entries / (330 ns^{-1})");
   // all_sh->Add(tp_h);
   for (size_t i = 1; i != all_h_v.size(); i++) {
     all_sh->Add(all_h_v[i]);
@@ -388,14 +430,14 @@ void Lab2hist(const int filepath_option = 0, const bool do_print = false,
 
   /////////////////////// canvas 1 ///////////////////////////////////
 
-  TCanvas *canvas1 = new TCanvas("canvas1", "Joint histogram", 1440, 720);
+  TCanvas *canvas1 = new TCanvas("canvas1", "Joint histogram", 0, 0, 1440, 720);
   canvas1->Divide(2, 1);
   canvas1->cd(1);
 
   gStyle->SetPalette(kBird); // "kRainBow" is not colourblind friendly!
   gPad->SetLogy();
   all_sh->Draw("nostack pmc plc hist p");
-  gPad->BuildLegend(.62, .675, .9, .9);
+  gPad->BuildLegend(.53, .62, .9, .93);
 
   // collection of all ratio histograms
   std::vector<TH1D *> all_div_h_v;
@@ -403,7 +445,7 @@ void Lab2hist(const int filepath_option = 0, const bool do_print = false,
 
   // stacked histogram of all ratio histograms
   THStack *all_div_sh = new THStack(
-      "all_div_sh", "Relative presence histogram; Stop time (ns); Entries");
+      "all_div_sh", "Relative presence histogram; Stop time (ns); Ratio");
 
   // create clone histograms, divide them by total, then add them to the stacked
   // histogram (sh), but first managing the first (i=0) histogram out of sh
@@ -415,16 +457,17 @@ void Lab2hist(const int filepath_option = 0, const bool do_print = false,
     all_div_h_v[i]->Divide(total_h);
     all_div_sh->Add(all_div_h_v[i]);
   }
-
+  // all_div_sh->GetHistogram()->GetYaxis()->SetLabelOffset(.01);
   canvas1->cd(2);
   gPad->SetLogy(0);
   all_div_sh->Draw("pfc plc pmc");
   gPad->BuildLegend();
+  all_div_sh->GetYaxis()->SetLabelOffset(0.01);
 
   /////////////////////// canvas 2 ///////////////////////////////////
 
-  TCanvas *canvas2 =
-      new TCanvas("canvas2", "\"yes yes no\" time difference", 720, 720);
+  TCanvas *canvas2 = new TCanvas("canvas2", "\"yes yes no\" time difference", 0,
+                                 720, 720, 720);
   gPad->SetLeftMargin(0.15);
   gPad->SetRightMargin(0.07);
   // yyn_diff_h->SetTitleOffset(1.5, "X");
@@ -435,12 +478,13 @@ void Lab2hist(const int filepath_option = 0, const bool do_print = false,
   /////////////////////// canvas 3 ///////////////////////////////////
 
   TCanvas *canvas3 =
-      new TCanvas("canvas3", "true positive histogram", 720, 720);
+      new TCanvas("canvas3", "true positive histogram", 720, 720, 720, 720);
   gPad->SetLogy();
+  gPad->SetLeftMargin(0.13);
   total_h->SetFillColor(kRed);
   total_h->SetLineWidth(0);
   total_h->SetTitle("True and false positives stop time histogram");
-  total_h->GetYaxis()->SetTitleOffset(.9);
+  // total_h->GetYaxis()->SetTitleOffset(.9);
   total_h->Draw();
   // tp_h->SetFillColor(kBlue);
   // tp_h->SetLineWidth(0);
@@ -458,15 +502,16 @@ void Lab2hist(const int filepath_option = 0, const bool do_print = false,
   // on top of tp_h which contains the false positives
   leg3->Draw("same");
 
-  gPad->RedrawAxis(); // redraw because "same" drawing option printed on top
+  gPad->RedrawAxis(); // redraw because "same" printed on top
   gPad->RedrawAxis("G");
 
   /////////////////////// canvas 4 ///////////////////////////////////
 
-  TCanvas *canvas4 = new TCanvas("canvas4", "Ratio", 720, 720);
+  TCanvas *canvas4 = new TCanvas("canvas4", "Ratio", 1440, 720, 720, 720);
   auto ratio_h = new TRatioPlot(tp_h_new, total_h);
   gPad->SetLogy();
   gPad->SetBottomMargin(1.05);
+  ratio_h->SetLeftMargin(0.13);
   total_h->SetMarkerColor(kRed);
   total_h->SetMarkerStyle(kWhite);
   total_h->SetLineWidth(1);
@@ -476,18 +521,26 @@ void Lab2hist(const int filepath_option = 0, const bool do_print = false,
   ratio_h->SetH2DrawOpt("e1"); // drawing option for total_h ("H2")
   ratio_h->GetLowYaxis()->SetNdivisions(505);
   ratio_h->SetSeparationMargin(0.03); // margin between low and top pad
-  ratio_h->Draw("nogrid"); // hides the horizontal dashed lines in lower plot
+  ratio_h->Draw(); // hides the horizontal dashed lines in lower plot
+
+  auto ratio_g = ratio_h->GetLowerRefGraph(); // ratio graph
+  std::cout << "Ratio ";
+  // auto w_mean = getWeightedMeanY(ratio_g);
+  auto mean_line = std::vector<double>{getWeightedMeanY(ratio_g)};
+  ratio_g->SetMarkerStyle(kFullCircle);
+  ratio_h->SetGridlines(mean_line);
+  ratio_h->Paint(); // updatew grid lines
 
   ratio_h->GetLowerRefGraph()->SetMinimum(0.3); // lower (ratio) range
   ratio_h->GetLowerRefGraph()->SetMaximum(1.1);
-  ratio_h->GetUpperRefYaxis()->SetTitleOffset(1);   // upper y axis
-  ratio_h->GetLowerRefYaxis()->SetTitle("ratio");   // lower y axis
+  // ratio_h->GetUpperRefYaxis()->SetTitleOffset(1);   // upper y axis
+  ratio_h->GetLowerRefYaxis()->SetTitle("Ratio");   // lower y axis
   ratio_h->GetLowerRefXaxis()->SetTitleOffset(0.9); // lower x axis
 
   ratio_h->GetUpperPad()->cd();
-  TLegend *leg4 = new TLegend(.65, .7, .9, .9);
-  leg4->AddEntry(tp_h_new, "true positives", "f");
-  leg4->AddEntry(total_h, "false positives", "pe1");
+  TLegend *leg4 = new TLegend(.59, .67, .9, .9);
+  leg4->AddEntry(tp_h_new, "Accepted evs", "f");
+  leg4->AddEntry(total_h, "All NTFs", "pe1");
   leg4->Draw("same");
 
   ////////////////////////////////////////////////////////////////////
