@@ -201,7 +201,7 @@ void fitNPrint(TH1D *tp_h, TF1 *ff, const bool R_opt, const bool LC_opt,
     std::cout << " ± " << ff->GetParError(1); // R
   else
     std::cout << setw(7) << "";
-  std::cout << '\t' << setprecision(2) << scientific << ff->GetParameter(4);
+  std::cout << '\t' << setprecision(2) << scientific << 1./ff->GetParameter(4);
   if (LC_opt)
     std::cout << " ± " << ff->GetParError(4); // LambdaC
   else
@@ -225,7 +225,7 @@ void Lab2ff() {
 
   set_LEO_style();
 
-  double const R = 1.21;
+  double const R = 1.27;
   double const lambdaC = 4.4e-3;
   double const Q = 0.975;
 
