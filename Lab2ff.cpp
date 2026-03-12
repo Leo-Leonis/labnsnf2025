@@ -2,7 +2,6 @@
 #include "TF1.h"
 #include "TFile.h"
 #include "TH1D.h"
-#include "TLatex.h"
 #include "TLegend.h"
 #include "TMath.h"
 #include "TROOT.h"
@@ -42,7 +41,7 @@ void set_LEO_style() {
   // pad
   gStyle->SetPadLeftMargin(0.12);
   // gStyle->SetPadRightMargin(1);
-  gStyle->SetPadTopMargin(0.07);
+  gStyle->SetPadTopMargin(0.01);
   gStyle->SetPadBottomMargin(0.1);
 
   // title
@@ -58,7 +57,10 @@ void set_LEO_style() {
   gStyle->SetTitleSize(.05, "Y");
   // gStyle->SetTitleOffset(1.3, "X"); // ROOT bug: "x" does y-axis and
   // viceversa
-  // gStyle->SetTitleOffset(1, "Y"); // ROOT bug: "x" does y-axis and viceversa
+  // gStyle->SetTitleOffset(1, "Y");
+
+  // legend
+  gStyle->SetLegendTextSize(0.04);
 }
 
 Double_t fullEq(Double_t const *x, Double_t const *par) {
@@ -172,6 +174,8 @@ void fitNPrint(TH1D *tp_h, TF1 *ff, const bool R_opt, const bool LC_opt,
     ff->SetParLimits(5, Q_min, Q_max);
   }
 
+  // ff->FixParameter(3, 2197); // debug
+
   tp_h->Fit(ff, "QNR", "");
   // calculating tau- and error of tau-
   double tauM;    // tau-
@@ -202,7 +206,7 @@ void fitNPrint(TH1D *tp_h, TF1 *ff, const bool R_opt, const bool LC_opt,
     std::cout << " ± " << ff->GetParError(1); // R
   else
     std::cout << setw(7) << "";
-  std::cout << '\t' << setprecision(2) << scientific << 1./ff->GetParameter(4);
+  std::cout << '\t' << setprecision(2) << scientific << ff->GetParameter(4);
   if (LC_opt)
     std::cout << " ± " << ff->GetParError(4); // LambdaC
   else
@@ -226,11 +230,13 @@ void Lab2ff() {
 
   set_LEO_style();
 
-  double const R = 1.27;
+  double const R = 1.21;
   double const lambdaC = 4.4e-3;
   double const Q = 0.975;
   double const tau0 = 2197; // ns
   double const tauM = 206;  // ns, tau- in iron
+
+  TString res_suffix = "_20"; // suffix to the result file names
 
   // histogram that contains all true positive events
   TH1D *tp_h = new TH1D();
@@ -238,7 +244,7 @@ void Lab2ff() {
   double const range_min = 0;
   double const range_max = 16500;
 
-  TFile *res_file = new TFile("result.root");
+  TFile *res_file = new TFile("result" + res_suffix + ".root");
   if (res_file->IsZombie()) {
     std::cout << "\033[31;1mLEO_ERROR: could not open file \""
               << res_file->GetName() << "\".\033[0m" << '\n';
@@ -391,6 +397,7 @@ void Lab2ff() {
   fitNPrint(tp_h, fullForm, 1, 0, 1); // FIT5
   fitNPrint(tp_h, fullForm, 0, 1, 1); // FIT6
   fitNPrint(tp_h, fullForm, 1, 1, 1); // FIT7
+  // fitNPrint(tp_h, fullForm, 0, 0, 0); // FIT0
 
   TFitResultPtr altFullFit = tp_h->Fit(altFullForm, "NSR+", "");
   std::cout << '\n'
@@ -398,24 +405,37 @@ void Lab2ff() {
             << 1. / (altFullForm->GetParameter(4) +
                      (Q / altFullForm->GetParameter(3)))
             << '\n';
-  TFitResultPtr redFit = tp_h->Fit(redForm, "NSR+", "", 750, range_max);
 
-  TF1 *testForm = new TF1("testForm", test_exp, range_min, range_max, 2);
-  testForm->SetLineColor(kViolet);
-  testForm->SetParNames("N_t", "tau");
-  testForm->SetParameter(0, 4000);
-  testForm->SetParameter(1, 2000);
-  TFitResultPtr testFit = tp_h->Fit(testForm, "NSR+", "", 1000, 8000);
+  TFitResultPtr redFit = tp_h->Fit(redForm, "NSR+", "", 750, range_max);
+  std::cout << '\t' << "reduced fit: " << redForm->GetChisquare() << "/"
+            << redForm->GetNDF() << " or " << redForm->GetProb() * 100. << "%"
+            << '\n';
+
+  // TF1 *testForm = new TF1("testForm", test_exp, range_min, range_max, 2);
+  // testForm->SetLineColor(kViolet);
+  // testForm->SetParNames("N_t", "tau");
+  // testForm->SetParameter(0, 4000);
+  // testForm->SetParameter(1, 2000);
+  // TFitResultPtr testFit = tp_h->Fit(testForm, "NSR+", "", 1000, 8000);
 
   TCanvas *canvas1 = new TCanvas("canvas1", "Final Fitting", 720, 720);
   canvas1->SetLogy();
+  tp_h->SetTitle(" ");
+  tp_h->SetTitleOffset(1.2, "y");
   tp_h->Draw("pe1"); // "p" points, "e1" error bars with end bars
   fullForm->Draw("same");
   fullForm2->Draw("same");
   fullForm3->Draw("same");
   // altFullForm->Draw("same");
   // fullForm3->GetParameter("");
-  canvas1->BuildLegend(.5, .75, .9, .93);
+  redForm->Draw("same");
+
+  double const top = 1. - static_cast<double>(gPad->GetTopMargin());
+  double const right = 1. - static_cast<double>(gPad->GetRightMargin());
+  TLegend *leg = new TLegend(right - .2, top - .15, right, top);
+  leg->AddEntry(tp_h, "data", "pe1");
+  leg->AddEntry(redForm, "fit" /* "only #tau_{0}" */, "l");
+  leg->Draw("same");
 
   gPad->Update();
 
@@ -431,7 +451,7 @@ void Lab2ff() {
   std::cout << "Fullfit2 τ_C value: " << 1. / temp << " (should be "
             << 1. / lambdaC << ")" << '\n';
   std::cout << fullForm2->GetParameter(3) << '\n';
-  canvas1->Print("graphs/Lab2ff/Lab2ff.pdf");
+  canvas1->Print("graphs/Lab2ff/Lab2ff" + res_suffix + ".pdf");
   std::cout << "\033[1;32mLEO_INFO: Files saved!\033[22m If errors appear "
                "then first create a \"graphs/Lab2ff\" folder in your "
                "directory.\033[0m"
