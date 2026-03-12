@@ -244,7 +244,7 @@ void Lab2ff() {
   double const range_min = 0;
   double const range_max = 16500;
 
-  TFile *res_file = new TFile("result" + res_suffix + ".root");
+  TFile *res_file = new TFile("results/result" + res_suffix + ".root");
   if (res_file->IsZombie()) {
     std::cout << "\033[31;1mLEO_ERROR: could not open file \""
               << res_file->GetName() << "\".\033[0m" << '\n';
