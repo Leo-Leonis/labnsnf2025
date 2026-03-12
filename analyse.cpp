@@ -82,7 +82,7 @@ int analyse(int do_debug = 0 /* int file_id = -1 */) {
   for (std::array<TH1F *, 3> h_v : h_master) {
     for (TH1F *hist : h_v) {
       std::cout << std::setprecision(10) << hist->GetMean() << '\t'
-                << hist->GetRMS() << '\t';
+                << hist->GetStdDev() << '\t';
     }
     std::cout << '\n';
   }
@@ -90,7 +90,8 @@ int analyse(int do_debug = 0 /* int file_id = -1 */) {
   std::ofstream ofile;
   for (size_t i = 0; i != 3; i++) {
     ofile.open("data/cali_tot/cali_tot_" + file_id_char_v[i] + ".txt",
-               std::ofstream::out | std::ofstream::trunc);
+               std::ofstream::out |
+                   std::ofstream::trunc); // clears previous data
     if (ofile.is_open()) {
       for (size_t j = 0; j != 6; j++) {
         ofile << x_value[j] << '\t' << std::setprecision(10)
@@ -99,7 +100,7 @@ int analyse(int do_debug = 0 /* int file_id = -1 */) {
       }
     } else {
       std::cout << "LEO_ERROR: could NOT open file \"data/cali_tot/cali_tot_" +
-                       file_id_char_v[i] + ".txt\" "
+                       file_id_char_v[i] + "_new.txt\" "
                 << '\n';
     }
     ofile.close();
