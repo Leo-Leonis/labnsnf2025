@@ -59,7 +59,7 @@ double scd(const int a) { return static_cast<double>(a); }
 // (LEO) Sets the default style of the graphs produced
 void set_style() {
   // gStyle->SetOptStat(111110);
-  // gStyle->SetOptStat(0);
+  gStyle->SetOptStat(0);
 
   // pad
   gStyle->SetPadLeftMargin(0.13);
@@ -159,6 +159,7 @@ void Lab2hist(const int filepath_option = 0, const bool do_print = false,
   // max difference in absolute value between coincident counts (events in which
   // there are more than 2 positive stop signals) in nanoseconds
   const double max_diff = 6.5;
+  const double mean_diff = -2.677; // mean from yyn_diff_th histogram
   const int min_x = 0;
   const int max_x = 16500;
 
@@ -195,6 +196,7 @@ void Lab2hist(const int filepath_option = 0, const bool do_print = false,
            "Activate debug mode by executing Lab2hist(x,x,1) \033[0m"
         << '\n';
 
+  // array of the strings that contain the names of the histograms
   std::array<TString, 9> ev_str;
   ev_str[0] = "\"no no no\"";
   ev_str[1] = "\"yes no no\"";
@@ -231,11 +233,25 @@ void Lab2hist(const int filepath_option = 0, const bool do_print = false,
   // histogram of time difference in "yes yes no" events in effective time
   TH1D *yyn_diff_th = new TH1D("yyn_diff_th",
                                "t_{PL1} - t_{PL2} in \"yes yes no\" evs;Time "
-                               "difference (ns);Entries",
-                               31, -62, 62); // bin = 40 is maximum around
+                               "difference (ns);Entries / (4 ns^{-1})",
+                               31, -62, 62); // 4 ns per bin
 
-  int ev_n, p1, p2, p3;
-  double t;
+  // histogram that stores the event time of the "yes yes no" event
+  TH1D *yyn_time_h = new TH1D("yyn_time_h",
+                              "\"yes yes no\" time event distribution;Time "
+                              "(s);Entries / (2*10^{4} s^{-1})",
+                              30, 0, 600000); // {4 ns} per bin
+
+  // histogram that stores the event time of the LITTLE PEAK of "yes yes no"
+  // event
+  TH1D *yyn_time_peak_h =
+      new TH1D("yyn_time_peak_h",
+               "\"yes yes no\" time event distribution for t_{PL1}-t_{PL2} < "
+               "-25 ns;Time (s);Entries / (2*10^{4} s^{-1})",
+               30, 0, 600000); // {4 ns} per bin
+
+  int ev_n, p1, p2, p3; // event number
+  double t;             // time of event
   int n_detections = 0; // number of detections
   // the cases are ("FP" = false positive, "TN" true negative):
   //       0. no no no (TN)
@@ -253,9 +269,11 @@ void Lab2hist(const int filepath_option = 0, const bool do_print = false,
   // integer that detects any kind of different case other than triple-fff event
   // bool any_update = false;
 
+  // input file
   std::ifstream file(filepath_string.c_str());
 
-  double value; // placeholder value
+  double value;   // placeholder value
+  int n_ev_peaks; // debug
 
   while (!file.eof()) {
     // read in the values
@@ -280,6 +298,7 @@ void Lab2hist(const int filepath_option = 0, const bool do_print = false,
           // std::cout << '\t' << ev_n << '\t' << p1 << '\t' << p2 << '\t' << p3
           // << '\n';
 
+          // fill the smallest value
           if (p1 <= p2) {
             if (p1 <= p3)
               value = cal_val_new(p1, 1);
@@ -293,16 +312,27 @@ void Lab2hist(const int filepath_option = 0, const bool do_print = false,
           }
 
           all_h_v[7]->Fill(value);
-        } else {
+        } else { // "yes yes no" case, we need to identify the time difference
           yyn_diff_ch->Fill(p1 - p2);
           double const p1_calibrated = cal_val_new(p1, 1);
           double const p2_calibrated = cal_val_new(p2, 2);
           double const p1p2diff = p1_calibrated - p2_calibrated;
           yyn_diff_th->Fill(p1p2diff);
 
-          value = cal_val_new(p2, 2); // p2 as the reference value
+          value = p2_calibrated; // p2 will be the reference value to be filled
 
-          if (TMath::Abs(p1p2diff) <= max_diff) {
+          // analysis of time distribution of all "yes yes no" events
+          yyn_time_h->Fill(t);
+          // analysis of time distr. of SMALL PEAK evs
+          if (p1p2diff < -25.) {
+            n_ev_peaks++;
+            std::cout << "histogram filled! (total: " << n_ev_peaks << ")"
+                      << '\n'; // debug
+            yyn_time_peak_h->Fill(t);
+          }
+
+          // yes yes no ev acceptance/rejection criteria
+          if (TMath::Abs(p1p2diff - mean_diff) <= max_diff) {
             ev_count[4]++; // 4. yes yes no (TP)
             // tp_h->Fill(value);
             all_h_v[4]->Fill(value);
@@ -384,38 +414,40 @@ void Lab2hist(const int filepath_option = 0, const bool do_print = false,
   // adding no no no histogram ("0" is the underflow bin)
   all_h_v[0]->SetBinContent(0, ev_count[0]);
 
-  // histogram that contains all true positive events (w/ ynn)
+  // histogram that contains all accepted NFTs (w/ ynn) (legacy)
   TH1D *tp_h = new TH1D(
-      "tp_h", "Accepted evs VS all NTFs;Stop time (ns);Entries / (330 ns^{-1})",
+      "tp_h",
+      "Accepted NTFs VS all NTFs;Stop time (ns);Entries / (330 ns^{-1})",
       n_bins, min_x, max_x);
   tp_h->Add(all_h_v[1]); // 1. yes no no
   tp_h->Add(all_h_v[2]); // 2. no yes no
   tp_h->Add(all_h_v[3]); // 3. no no yes
   tp_h->Add(all_h_v[4]); // 4. yes yes no
 
-  // histogram that contains all true positive events (w/o ynn)
+  // histogram that contains all acc. NTFs (w/o ynn)
   TH1D *tp_h_new = new TH1D(
       "tp_h_new",
-      "Accepted evs VS all NTFs;Stop time (ns);Entries / (330 ns^{-1})", n_bins,
-      min_x, max_x);
+      "Accepted NTFs VS all NTFs;Stop time (ns);Entries / (330 ns^{-1})",
+      n_bins, min_x, max_x);
   tp_h_new->Add(all_h_v[2]); // 2. no yes no
   tp_h_new->Add(all_h_v[3]); // 3. no no yes
   tp_h_new->Add(all_h_v[4]); // 4. yes yes no
 
+  // add all histograms to total_h
   for (TH1D *hist : all_h_v) {
     total_h->Add(hist);
   }
 
-  auto const sum_tp = tp_h_new->GetEntries();
-  auto const ev_cast = scd(ev_n);
+  auto const sum_tp = tp_h_new->GetEntries(); // sum of events of acc. NTFs
+  auto const ev_cast = scd(ev_n);             // event number but in double
   // auto const sum_tp_cast = scd(ev_count[1] + ev_count[2] + ev_count[3] +
   // ev_count[4]);
   // std::cout << "DEBUG: " << sum_tp << "and " << sum_tp << '\n';
   // auto const sum_fp_cast =
   //     scd(ev_count[1] + ev_count[5] + ev_count[6] + ev_count[7] +
   //     ev_count[8]);
-  auto const sum_fp = n_detections - sum_tp;
-  auto const n_det_cast = scd(n_detections);
+  auto const sum_fp = n_detections - sum_tp; // sum of events of rej. NTFs
+  auto const n_det_cast = scd(n_detections); // number of NTFs
 
   std::cout << "TOTAL EVENTS: " << ev_n << '\n';
 
@@ -464,12 +496,14 @@ void Lab2hist(const int filepath_option = 0, const bool do_print = false,
 
   std::cout << "sum_tp = " << sum_tp << " and sum_fp = " << sum_fp << '\n';
 
+  // graphical options for the histograms
   for (TH1D *hist : all_h_v) {
     hist->SetMarkerStyle(kFullCircle);
     // hist->SetMarkerSize(1.4);
     // hist->SetLineColorAlpha(0, 0.);
   }
 
+  // the stacked histogram
   THStack *all_sh = new THStack(
       "all_sh",
       "All events histogram; Stop time (ns); Entries / (330 ns^{-1})");
@@ -479,10 +513,11 @@ void Lab2hist(const int filepath_option = 0, const bool do_print = false,
   }
 
   /////////////////////// canvas 1 ///////////////////////////////////
+  // this will draw the double canvas (the colorful one)
 
   TCanvas *canvas1 = new TCanvas("canvas1", "Joint histogram", 0, 0, 1440, 720);
-  canvas1->Divide(2, 1, 0.001);
-  canvas1->cd(1);
+  canvas1->Divide(2, 1, .001); // divide in in 2 horizonal parts w/ 0.001 margin
+  canvas1->cd(1); // go to the first subdivision (the left one in this case)
 
   gStyle->SetPalette(kBird); // "kRainBow" is not colourblind friendly!
   gPad->SetLogy();
@@ -490,7 +525,7 @@ void Lab2hist(const int filepath_option = 0, const bool do_print = false,
   gPad->BuildLegend(.53 + 0.09, .62 - 0.05, .9 + 0.09, .93 - 0.05, "", "f");
   // canvas1->SetFillColor(kRed); // debug
 
-  canvas1->cd(2);
+  canvas1->cd(2); // go to the second subdivision (the right one in this case)
   // collection of all ratio histograms
   std::vector<TH1D *> all_div_h_v;
   all_div_h_v.reserve(all_h_v.size());
@@ -563,7 +598,7 @@ void Lab2hist(const int filepath_option = 0, const bool do_print = false,
 
   /////////////////////// canvas 4 ///////////////////////////////////
 
-  TCanvas *canvas4 = new TCanvas("canvas4", "Ratio", 1440, 720, 720, 720);
+  TCanvas *canvas4 = new TCanvas("canvas4", "Ratio", 1440, 0, 720, 720);
   auto ratio_h = new TRatioPlot(tp_h_new, total_h);
   gPad->SetLogy();
   gPad->SetBottomMargin(1.05);
@@ -594,10 +629,29 @@ void Lab2hist(const int filepath_option = 0, const bool do_print = false,
   ratio_h->GetLowerRefXaxis()->SetTitleOffset(0.9); // lower x axis
 
   ratio_h->GetUpperPad()->cd();
-  TLegend *leg4 = new TLegend(.59, .67, .9, .9);
-  leg4->AddEntry(tp_h_new, "Accepted evs", "f");
+  TLegend *leg4 = new TLegend(.65, .67, .9, .9);
+  leg4->AddEntry(tp_h_new, "Acc. NTFs", "f");
   leg4->AddEntry(total_h, "All NTFs", "pe1");
   leg4->Draw("same");
+
+  /////////////////////// canvas 5 ///////////////////////////////////
+
+  TCanvas *canvas5 =
+      new TCanvas("canvas5", "yyn time distribution", 1440, 720, 720, 720);
+  // gPad->SetLeftMargin(0.13);
+  gPad->SetLogy();
+  yyn_time_h->SetAxisRange(1, 500, "Y");
+  yyn_time_h->Draw();
+  yyn_time_peak_h->SetFillColor(kRed);
+  yyn_time_peak_h->Draw("same");
+
+  TLegend *leg5 = new TLegend(.7, .8, .9, .93);
+  leg5->AddEntry(yyn_time_h, "\"yes yes no\" evs", "f");
+  leg5->AddEntry(yyn_time_peak_h, "SMALL PEAK", "f");
+  leg5->Draw("same");
+
+  gPad->RedrawAxis(); // redraw because "same" printed on top
+  gPad->RedrawAxis("G");
 
   ////////////////////////////////////////////////////////////////////
   ////////////////////////////////////////////////////////////////////
@@ -611,7 +665,7 @@ void Lab2hist(const int filepath_option = 0, const bool do_print = false,
         << '\n';
   } else {
     // saving all histograms in one .root file
-    TFile *res_f = new TFile("results/result_60.root", "RECREATE");
+    TFile *res_f = new TFile("results/result_6.5_peak25.root", "RECREATE");
     all_sh->Write();
     total_h->Write();
     tp_h->Write();
@@ -619,6 +673,8 @@ void Lab2hist(const int filepath_option = 0, const bool do_print = false,
     yyn_diff_ch->Write();
     yyn_diff_th->Write();
     all_h_v[4]->Write();
+    yyn_time_h->Write();
+    yyn_time_peak_h->Write();
     res_f->Close();
 
     // saving all canvases produced in different pdf's
@@ -626,6 +682,7 @@ void Lab2hist(const int filepath_option = 0, const bool do_print = false,
     canvas2->Print("graphs/Lab2hist/yyn_time_diff.pdf");
     canvas3->Print("graphs/Lab2hist/tp_total_h.pdf");
     canvas4->Print("graphs/Lab2hist/ratio.pdf");
+    canvas5->Print("graphs/Lab2hist/yyn_time.pdf");
 
     std::cout << "\033[1;32mLEO_INFO: Files saved!\033[22m If errors appear "
                  "then first create a \"graphs/Lab2hist\" folder in your "

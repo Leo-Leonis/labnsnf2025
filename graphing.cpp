@@ -18,6 +18,7 @@
 #include <string>
 #include <vector>
 
+// the linear function
 Double_t lin_regr(Double_t *x, Double_t *par) {
   Float_t xx = x[0];
   Double_t a = par[0]; // intercept
@@ -28,20 +29,25 @@ Double_t lin_regr(Double_t *x, Double_t *par) {
 
 void run(Bool_t do_print = 0) {
 
-  gStyle->SetOptFit(0);
-  gStyle->SetPadLeftMargin(0.13);
-  // gStyle->SetPadRightMargin(0.1);
-  gStyle->SetPadTopMargin(0.07);
-  gStyle->SetPadBottomMargin(0.12);
-  gStyle->SetTitleFont(62, "");
-  gStyle->SetTitleSize(.06, "");
-  gStyle->SetAxisMaxDigits(3);
-  gStyle->SetStripDecimals(0);
+  // sets the style
+  {
+    gStyle->SetOptFit(0);
+    gStyle->SetPadLeftMargin(0.13);
+    // gStyle->SetPadRightMargin(0.1);
+    gStyle->SetPadTopMargin(0.07);
+    gStyle->SetPadBottomMargin(0.12);
+    gStyle->SetTitleFont(62, "");
+    gStyle->SetTitleSize(.06, "");
+    gStyle->SetAxisMaxDigits(3);
+    gStyle->SetStripDecimals(0);
+  }
 
+  // the three functions
   TF1 *f1 = new TF1("f1", lin_regr, 0, 11000, 2);
   TF1 *f2 = new TF1("f2", lin_regr, 0, 11000, 2);
   TF1 *f3 = new TF1("f3", lin_regr, 0, 11000, 2);
 
+  // vector of functions
   std::vector<TF1 *> f_vector;
   f_vector.push_back(f1);
   f_vector.push_back(f2);
@@ -50,6 +56,7 @@ void run(Bool_t do_print = 0) {
   Double_t a = 0; // intercept
   Double_t b = 1; // slope
 
+  // this lambda function will take each TFunction and set the parameters
   auto h_config_lambda = [a, b](TF1 *f) {
     f->SetParameter(0, a);
     f->SetParameter(1, b);
@@ -72,6 +79,7 @@ void run(Bool_t do_print = 0) {
   ts_v.push_back(&ts2);
   ts_v.push_back(&ts3);
 
+  // bunch of tgrapherrors and put them in a vector
   TGraphErrors *g1 =
       new TGraphErrors("data/cali_tot/cali_tot_1.txt", "%lg %lg %lg", "");
   TGraphErrors *g2 =
@@ -84,6 +92,7 @@ void run(Bool_t do_print = 0) {
   g_v.push_back(g2);
   g_v.push_back(g3);
 
+  // bunch of canvas and put them in a vector
   TCanvas *c1 = new TCanvas("c1", "FPGA 1 Calibration", 720, 720);
   TCanvas *c2 = new TCanvas("c2", "FPGA 2 Calibration", 720, 720);
   TCanvas *c3 = new TCanvas("c3", "FPGA 3 Calibration", 720, 720);
@@ -93,6 +102,7 @@ void run(Bool_t do_print = 0) {
   c_v.push_back(c2);
   c_v.push_back(c3);
 
+  // bunch of fit_results and put them in a vector
   TF1 *res1;
   TF1 *res2;
   TF1 *res3;
@@ -106,17 +116,19 @@ void run(Bool_t do_print = 0) {
   TLegend *l2 = new TLegend(.6, 0.12, 0.9, 0.28);
   TLegend *l3 = new TLegend(.6, 0.12, 0.9, 0.28);
 
+  // bunch of legends and put them in a vector
   std::vector<TLegend *> l_v;
   l_v.push_back(l1);
   l_v.push_back(l2);
   l_v.push_back(l3);
 
-  TH1F *hist;
-  std::ofstream ofile("data/graphing.txt");
+  TH1F *hist;                               // placeholder histogram
+  std::ofstream ofile("data/graphing.txt"); // output file
 
   for (int i = 0; i < 3; i++) {
-    c_v[i]->cd();
+    c_v[i]->cd(); // go to current canvas (indexed by i)
 
+    // graph presets
     g_v[i]->SetTitle("FPGA " + *ts_v[i] +
                      " calibration;t_{osc} (ns);FPGA counts");
     g_v[i]->SetMarkerStyle(20);
@@ -124,6 +136,7 @@ void run(Bool_t do_print = 0) {
     g_v[i]->SetLineWidth(2);
     g_v[i]->SetMarkerSize(1.5);
 
+    // perform the fit with in the Range of function and Quietly (not verbose)
     g_v[i]->Fit("f" + *ts_v[i], "RQ");
 
     // c_v[i]->SetGridx();
@@ -131,6 +144,7 @@ void run(Bool_t do_print = 0) {
     c_v[i]->SetTicks(1, 1);
     g_v[i]->Draw("APE");
 
+    // get the fit result and print the fit result
     res_v[i] = g_v[i]->GetFunction("f" + *ts_v[i]);
     std::cout << "====================================" << '\n'
               << "CASE " + *ts_v[i] + ":" << '\n'
@@ -142,6 +156,7 @@ void run(Bool_t do_print = 0) {
     ofile << res_v[i]->GetParameter(1) << '\t' << res_v[i]->GetParameter(0)
           << '\n';
 
+    // configure the legend
     l_v[i]->AddEntry(g_v[i], "data", "pe");
     l_v[i]->AddEntry(f1, "linear fit");
     l_v[i]->SetTextSize(0.05);
@@ -169,6 +184,7 @@ void run(Bool_t do_print = 0) {
     }
   }
 
+  // write the file results
   if (!do_print) {
     std::cout << "\033[1;31mLEO_WARNING: do_print = 0, no graphs will be "
                  "generated.\033[0m"

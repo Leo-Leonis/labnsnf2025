@@ -237,7 +237,7 @@ void Lab2ff() {
   double const tau0 = 2197; // ns
   double const tauM = 206;  // ns, tau- in iron
 
-  TString res_suffix = "_20"; // suffix to the result file names
+  TString res_suffix = "_6.5_adj"; // suffix to the result file names
 
   // histogram that contains all true positive events
   TH1D *tp_h = new TH1D();
@@ -371,10 +371,10 @@ void Lab2ff() {
   fullForm->SetLineColor(kRed);
   fullForm2->SetLineColor(kBlue);
   fullForm3->SetLineColor(kOrange);
-  redForm->SetLineColor(kCyan);
   altFullForm->SetLineColor(kGreen);
   altFullForm->SetLineStyle(kDashed);
-  redForm->SetLineColor(kCyan);
+  redForm->SetLineColor(kRed);
+  redForm->SetLineWidth(2);
 
   // tp_h->SetFillColor(kPink);
   tp_h->SetMarkerStyle(kFullCircle);
@@ -419,14 +419,14 @@ void Lab2ff() {
   // testForm->SetParameter(1, 2000);
   // TFitResultPtr testFit = tp_h->Fit(testForm, "NSR+", "", 1000, 8000);
 
-  TCanvas *canvas1 = new TCanvas("canvas1", "Final Fitting", 720, 720);
+  TCanvas *canvas1 = new TCanvas("canvas1", "Final Fitting", 800, 720);
   canvas1->SetLogy();
   tp_h->SetTitle(" ");
   tp_h->SetTitleOffset(1.2, "y");
   tp_h->Draw("pe1"); // "p" points, "e1" error bars with end bars
-  fullForm->Draw("same");
-  fullForm2->Draw("same");
-  fullForm3->Draw("same");
+  // fullForm->Draw("same");
+  // fullForm2->Draw("same");
+  // fullForm3->Draw("same");
   // altFullForm->Draw("same");
   // fullForm3->GetParameter("");
   redForm->Draw("same");
