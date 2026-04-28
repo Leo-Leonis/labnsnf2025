@@ -233,8 +233,22 @@ void Lab2hist(const int filepath_option = 0, const bool do_print = false,
   // histogram of time difference in "yes yes no" events in effective time
   TH1D *yyn_diff_th = new TH1D("yyn_diff_th",
                                "t_{PL1} - t_{PL2} in \"yes yes no\" evs;Time "
-                               "difference (ns);Entries",
-                               31, -62, 62); // bin = 40 is maximum around
+                               "difference (ns);Entries / (4 ns^{-1})",
+                               31, -62, 62); // 4 ns per bin
+
+  // histogram that stores the event time of the "yes yes no" event
+  TH1D *yyn_time_h = new TH1D("yyn_time_h",
+                              "\"yes yes no\" time event distribution;Time "
+                              "(s);Entries / (2*10^{4} s^{-1})",
+                              30, 0, 600000); // {4 ns} per bin
+
+  // histogram that stores the event time of the LITTLE PEAK of "yes yes no"
+  // event
+  TH1D *yyn_time_peak_h =
+      new TH1D("yyn_time_peak_h",
+               "\"yes yes no\" time event distribution for t_{PL1}-t_{PL2} < "
+               "-25 ns;Time (s);Entries / (2*10^{4} s^{-1})",
+               30, 0, 600000); // {4 ns} per bin
 
   int ev_n, p1, p2, p3; // event number
   double t;             // time of event
@@ -258,7 +272,8 @@ void Lab2hist(const int filepath_option = 0, const bool do_print = false,
   // input file
   std::ifstream file(filepath_string.c_str());
 
-  double value; // placeholder value
+  double value;   // placeholder value
+  int n_ev_peaks; // debug
 
   while (!file.eof()) {
     // read in the values
@@ -306,7 +321,17 @@ void Lab2hist(const int filepath_option = 0, const bool do_print = false,
 
           value = p2_calibrated; // p2 will be the reference value to be filled
 
-          // yes yes no ev selection criteria
+          // analysis of time distribution of all "yes yes no" events
+          yyn_time_h->Fill(t);
+          // analysis of time distr. of SMALL PEAK evs
+          if (p1p2diff < -25.) {
+            n_ev_peaks++;
+            std::cout << "histogram filled! (total: " << n_ev_peaks << ")"
+                      << '\n'; // debug
+            yyn_time_peak_h->Fill(t);
+          }
+
+          // yes yes no ev acceptance/rejection criteria
           if (TMath::Abs(p1p2diff - mean_diff) <= max_diff) {
             ev_count[4]++; // 4. yes yes no (TP)
             // tp_h->Fill(value);
@@ -573,7 +598,7 @@ void Lab2hist(const int filepath_option = 0, const bool do_print = false,
 
   /////////////////////// canvas 4 ///////////////////////////////////
 
-  TCanvas *canvas4 = new TCanvas("canvas4", "Ratio", 1440, 720, 720, 720);
+  TCanvas *canvas4 = new TCanvas("canvas4", "Ratio", 1440, 0, 720, 720);
   auto ratio_h = new TRatioPlot(tp_h_new, total_h);
   gPad->SetLogy();
   gPad->SetBottomMargin(1.05);
@@ -609,6 +634,25 @@ void Lab2hist(const int filepath_option = 0, const bool do_print = false,
   leg4->AddEntry(total_h, "All NTFs", "pe1");
   leg4->Draw("same");
 
+  /////////////////////// canvas 5 ///////////////////////////////////
+
+  TCanvas *canvas5 =
+      new TCanvas("canvas5", "yyn time distribution", 1440, 720, 720, 720);
+  // gPad->SetLeftMargin(0.13);
+  gPad->SetLogy();
+  yyn_time_h->SetAxisRange(1, 500, "Y");
+  yyn_time_h->Draw();
+  yyn_time_peak_h->SetFillColor(kRed);
+  yyn_time_peak_h->Draw("same");
+
+  TLegend *leg5 = new TLegend(.7, .8, .9, .93);
+  leg5->AddEntry(yyn_time_h, "\"yes yes no\" evs", "f");
+  leg5->AddEntry(yyn_time_peak_h, "SMALL PEAK", "f");
+  leg5->Draw("same");
+
+  gPad->RedrawAxis(); // redraw because "same" printed on top
+  gPad->RedrawAxis("G");
+
   ////////////////////////////////////////////////////////////////////
   ////////////////////////////////////////////////////////////////////
 
@@ -621,7 +665,7 @@ void Lab2hist(const int filepath_option = 0, const bool do_print = false,
         << '\n';
   } else {
     // saving all histograms in one .root file
-    TFile *res_f = new TFile("results/result_6.5_adj.root", "RECREATE");
+    TFile *res_f = new TFile("results/result_6.5_peak25.root", "RECREATE");
     all_sh->Write();
     total_h->Write();
     tp_h->Write();
@@ -629,6 +673,8 @@ void Lab2hist(const int filepath_option = 0, const bool do_print = false,
     yyn_diff_ch->Write();
     yyn_diff_th->Write();
     all_h_v[4]->Write();
+    yyn_time_h->Write();
+    yyn_time_peak_h->Write();
     res_f->Close();
 
     // saving all canvases produced in different pdf's
@@ -636,6 +682,7 @@ void Lab2hist(const int filepath_option = 0, const bool do_print = false,
     canvas2->Print("graphs/Lab2hist/yyn_time_diff.pdf");
     canvas3->Print("graphs/Lab2hist/tp_total_h.pdf");
     canvas4->Print("graphs/Lab2hist/ratio.pdf");
+    canvas5->Print("graphs/Lab2hist/yyn_time.pdf");
 
     std::cout << "\033[1;32mLEO_INFO: Files saved!\033[22m If errors appear "
                  "then first create a \"graphs/Lab2hist\" folder in your "
