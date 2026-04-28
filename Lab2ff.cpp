@@ -113,6 +113,7 @@ Double_t altFullEq(Double_t const *x, Double_t const *par) {
   return N1 * (Exp(-t / t0)) + N2 * Exp((-t) * (LC + (Q / t0))) + b;
 }
 
+// Equation used in the final report
 Double_t redEq(Double_t const *x, Double_t const *par) {
   using TMath::Exp;
   Float_t const t = x[0];
