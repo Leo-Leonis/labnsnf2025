@@ -246,8 +246,8 @@ void Lab2hist(const int filepath_option = 0, const bool do_print = false,
   // event
   TH1D *yyn_time_peak_h =
       new TH1D("yyn_time_peak_h",
-               "\"yes yes no\" time event distribution for t_{PL1}-t_{PL2} < "
-               "-25 ns;Time (s);Entries / (2*10^{4} s^{-1})",
+               "\"yes yes no\" time event distribution;Time (s);Entries / "
+               "(2*10^{4} s^{-1})",
                30, 0, 600000); // {4 ns} per bin
 
   int ev_n, p1, p2, p3; // event number
@@ -326,8 +326,8 @@ void Lab2hist(const int filepath_option = 0, const bool do_print = false,
           // analysis of time distr. of SMALL PEAK evs
           if (p1p2diff < -25.) {
             n_ev_peaks++;
-            std::cout << "histogram filled! (total: " << n_ev_peaks << ")"
-                      << '\n'; // debug
+            // std::cout << "histogram filled! (total: " << n_ev_peaks << ")"
+            //           << '\n'; // debug
             yyn_time_peak_h->Fill(t);
           }
 
@@ -640,14 +640,22 @@ void Lab2hist(const int filepath_option = 0, const bool do_print = false,
       new TCanvas("canvas5", "yyn time distribution", 1440, 720, 720, 720);
   // gPad->SetLeftMargin(0.13);
   gPad->SetLogy();
-  yyn_time_h->SetAxisRange(1, 500, "Y");
-  yyn_time_h->Draw();
+  yyn_time_peak_h->SetAxisRange(.7, 550, "Y");
+  yyn_time_h->SetFillColor(kBlack);
+  yyn_time_h->SetFillStyle(3354);
+  yyn_time_h->SetLineColor(kBlack);
+  yyn_time_h->SetMarkerStyle(20);
   yyn_time_peak_h->SetFillColor(kRed);
+  yyn_time_peak_h->SetLineColor(kBlack);
+  yyn_time_peak_h->SetMarkerStyle(20);
+  yyn_time_peak_h->SetMarkerColor(kBlack);
   yyn_time_peak_h->Draw("same");
+  yyn_time_h->Draw("same");
 
-  TLegend *leg5 = new TLegend(.7, .8, .9, .93);
-  leg5->AddEntry(yyn_time_h, "\"yes yes no\" evs", "f");
-  leg5->AddEntry(yyn_time_peak_h, "SMALL PEAK", "f");
+  TLegend *leg5 = new TLegend(.5, .8, .9, .93);
+  leg5->AddEntry(yyn_time_h, "total \"yes yes no\" evs", "f");
+  leg5->AddEntry(yyn_time_peak_h,
+                 "t_{PL1} - t_{PL2} < -25 ns \"yes yes no\" evs", "f");
   leg5->Draw("same");
 
   gPad->RedrawAxis(); // redraw because "same" printed on top

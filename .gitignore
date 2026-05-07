@@ -23,4 +23,7 @@ test
 
 texput.log
 
+fit.cpp
+tmp.png
+
 .DS_store
